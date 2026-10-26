@@ -243,7 +243,7 @@ test("legacy import fills the form and malformed JSON preserves existing values"
     });
     await input.onchange({ target: input });
     assert.equal($("#area").value, "A9");
-    assert.match($("#status").textContent, /Importazione non riuscita/);
+    assert.match($("#status").textContent, /Import failed/);
     assert.deepEqual(errors, []);
   } finally {
     await tick();
@@ -275,19 +275,28 @@ test("layout, placeholders and all Sketch controls are in their requested locati
   try {
     assert.equal(
       $("#stratUnit").closest("label").textContent.trim(),
-      "Stratigraphic Unit",
+      "Stratigraphic unit",
     );
     assert.ok($(".left-column .metadata"));
     assert.ok($(".left-column .fragments"));
     assert.ok($(".right-column #remarks"));
     assert.ok($(".right-column #open-sketch"));
-    assert.equal($("#remarks").placeholder, "type here");
+    assert.equal($("#remarks").placeholder, "Type here...");
     assert.equal($("#sketch-placeholder").textContent.trim(), "tap to draw");
     assert.equal($("#sketch-title").textContent, "Sketch");
-    assert.equal($("#sketch-dialog header button"), null);
-    assert.equal(
-      $("#sketch-dialog").querySelectorAll("button").length,
-      $(".sketch-dock").querySelectorAll("button").length,
+    assert.deepEqual(
+      [...$("#sketch-dialog header").querySelectorAll("button")].map(
+        (b) => b.textContent,
+      ),
+      ["Save", "Back"],
+    );
+    assert.deepEqual(
+      [...$(".navigation-row").children].map((b) => b.id),
+      ["pan", "zoom-in", "zoom-level", "zoom-out", "fit-sketch"],
+    );
+    assert.deepEqual(
+      [...$(".drawing-row").querySelectorAll("button")].map((b) => b.id),
+      ["pen", "eraser", "undo", "redo", "clear"],
     );
     assert.equal($("#pdf"), null);
     assert.equal($("#json"), null);
@@ -404,6 +413,123 @@ test("stylus takes over an initial finger contact and ignores the palm while dra
     assert.equal(record.sketch.strokes.length, 1);
     assert.equal(record.sketch.strokes[0].points.length, 2);
     assert.deepEqual(errors, []);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+test("Remove row keeps one initial row and confirms removal of filled rows", async () => {
+  const { dom, $ } = setup();
+  try {
+    $("#new").click();
+    assert.equal($("#remove-row").disabled, true);
+    $("#add-row").click();
+    assert.equal($("#remove-row").disabled, false);
+    $("#remove-row").click();
+    assert.equal($("#rows").children.length, 1);
+    $("#add-row").click();
+    $("#rows").lastElementChild.querySelector("input").value = "Bowl";
+    $("#remove-row").click();
+    assert.equal($("#remove-dialog").open, true);
+    $("#remove-no").click();
+    assert.equal($("#rows").children.length, 2);
+    $("#remove-row").click();
+    $("#remove-yes").click();
+    assert.equal($("#rows").children.length, 1);
+    assert.equal($("#remove-row").disabled, true);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+test("Back saves the sketch and returns to the compilation form without clearing fields", async () => {
+  const { dom, w, $, downloads } = setup();
+  try {
+    $("#new").click();
+    $("#area").value = "A5";
+    $("#open-sketch").click();
+    await tick();
+    const canvas = $("#canvas");
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 900,
+    });
+    for (const [name, x, y] of [
+      ["pointerdown", 100, 100],
+      ["pointermove", 200, 300],
+      ["pointerup", 200, 300],
+    ]) {
+      const event = new w.Event(name, { bubbles: true, cancelable: true });
+      Object.assign(event, {
+        pointerType: "pen",
+        pointerId: 1,
+        clientX: x,
+        clientY: y,
+        button: 0,
+      });
+      canvas.dispatchEvent(event);
+    }
+    $("#back-sketch").click();
+    await tick();
+    assert.equal($("#sketch-dialog").open, false);
+    assert.equal($("#form-view").hidden, false);
+    assert.equal($("#area").value, "A5");
+    enablePdf(w);
+    await $("#export-files").onclick();
+    const record = JSON.parse(await blobText(w, downloads[1]));
+    assert.equal(record.sketch.strokes.length, 1);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+test("capture viewport retains the selected pen or eraser cursor, with uniform compact buttons", async () => {
+  const { dom, w, $ } = setup();
+  try {
+    const style = w.document.createElement("style");
+    style.textContent = read("styles.css");
+    w.document.head.append(style);
+    $("#new").click();
+    $("#open-sketch").click();
+    await tick();
+    const viewport = $("#sketch-viewport");
+    let capture;
+    viewport.setPointerCapture = (id) => (capture = id);
+    const canvas = $("#canvas");
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 900,
+    });
+    for (const [tool, filename] of [
+      ["pen", "cursor-pen.svg"],
+      ["eraser", "cursor-eraser.svg"],
+    ]) {
+      $("#" + tool).click();
+      const event = new w.Event("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.assign(event, {
+        pointerId: 5,
+        pointerType: "mouse",
+        clientX: 100,
+        clientY: 100,
+        button: 0,
+      });
+      canvas.dispatchEvent(event);
+      assert.equal(capture, 5);
+      assert.ok(w.getComputedStyle(viewport).cursor.includes(filename));
+      const end = new w.Event("pointerup", { bubbles: true });
+      Object.assign(end, { pointerId: 5 });
+      viewport.dispatchEvent(end);
+    }
+    for (const button of $("#sketch-dialog").querySelectorAll("button"))
+      assert.equal(w.getComputedStyle(button).width, "104px");
   } finally {
     await tick();
     dom.window.close();
