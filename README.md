@@ -37,7 +37,7 @@ Lo zoom va da 100% (foglio adattato con margine) a 600%. Due dita permettono zoo
 
 **Reset form**, in basso a sinistra, apre **Reset this form?** con **Yes / No**. Sì cancella tutti i campi e lo sketch e torna alla home; No chiude il box.
 
-**Save PDF and JSON** è l’unico pulsante di esportazione: prepara entrambi i file dalla stessa copia dei dati e con lo stesso nome base. I due download vengono avviati automaticamente. Sotto al pulsante restano i collegamenti **PDF** e **JSON** per recuperarli individualmente, anche se il browser limita i download multipli. Non viene creato uno ZIP. Il JSON è la copia modificabile da conservare per riprendere il lavoro; il PDF è la copia per la stampa.
+**Save PDF and JSON** è l’unico pulsante di esportazione: prepara entrambi i file dalla stessa copia dei dati e con lo stesso nome base. Su iPhone, iPad e Android viene scaricato un unico ZIP contenente entrambi i file. Su desktop rimangono i due download separati. Non viene mostrato il blocco Files ready né vengono lasciati collegamenti dopo il salvataggio. Estrai lo ZIP scaricato su mobile per ottenere il PDF e il JSON. Il JSON è la copia modificabile da conservare per riprendere il lavoro; il PDF è la copia per la stampa.
 
 Non sono presenti salvataggi locali automatici o un archivio del browser. Esporta i file prima di chiudere: il browser può mostrare un avviso in caso di modifiche non esportate, ma sui dispositivi mobili l’avviso non è garantito.
 
@@ -76,6 +76,7 @@ L’importazione verifica i campi prima di sostituire la scheda: limite 30 MB, 5
 - `js/sketch.js`: editor, interazione con penna/touch e rendering dei tratti.
 - `js/sketch-view.js`: geometria indipendente per zoom e spostamento.
 - `assets/cursor-pen.svg`, `assets/cursor-eraser.svg`: puntatori del foglio.
+- `js/export-archive.js`: scelta del download mobile e creazione del pacchetto ZIP.
 - `js/pdf.js`: impaginazione PDF.
 - `js/pdf-sketch.js`: disegno vettoriale dei tratti nel PDF e compatibilità con immagini precedenti.
 - `sw.js`: cache offline, limitata allo scope dell’app.
@@ -90,7 +91,7 @@ Per rilasciare aggiornamenti, cambia `VERSION` in `sw.js` e carica i file aggior
 
 ## Componenti
 
-jsPDF 3.0.3 (MIT) e font Liberation Sans (licenza in `vendor/`). Immagine di sfondo generata per questo progetto. Icona locale con profilo di recipiente. Nessun servizio di analisi o tracciamento.
+jsPDF 3.0.3 (MIT), JSZip 3.10.1 (MIT, incluso localmente) e font Liberation Sans (licenza in `vendor/`). Immagine di sfondo generata per questo progetto. Icona locale con profilo di recipiente. Nessun servizio di analisi o tracciamento.
 
 ## Aggiornamento dalla v1.0
 
@@ -144,6 +145,21 @@ Le vecchie immagini di sketch rimangono raster, senza conversioni automatiche. S
 
 L’anteprima nell’app e il campo `sketchPng` del JSON restano immagini per compatibilità; il PDF usa direttamente `sketch.strokes` quando disponibili. Nessun cambio allo schema dei dati, alle etichette, alla numerazione o all’impaginazione della scheda.
 
+## Novità v1.5.1
+
+- Tap to draw e Tap to edit ereditano font e dimensione come Type here..., mantenendo la posizione in alto a sinistra del box Sketch.
+- Eliminati il blocco Files ready: PDF · JSON, i relativi collegamenti e il messaggio di successo che li richiamava. Il pulsante Save PDF and JSON continua ad avviare i due download con lo stesso nome base; gli eventuali messaggi di errore rimangono disponibili.
+
+## Novità v1.5.2: download mobile congiunto
+
+Il pulsante Save PDF and JSON scarica un solo ZIP su iPhone, iPad (anche con user agent desktop) e Android. Lo ZIP contiene un PDF e un JSON con lo stesso nome base dell’archivio. Questo evita due download automatici consecutivi dalla stessa azione. Su desktop continuano a essere scaricati PDF e JSON separatamente.
+
+Su iPhone/iPad apri lo ZIP nell’app File per estrarre i due documenti; su Android usa la funzione di estrazione dell’app che gestisce i file. Non compare il blocco Files ready e non sono stati aggiunti pulsanti. Il PDF resta vettoriale per i tratti originali.
+
+JSZip è incluso in vendor e nella cache offline. Viene caricato quando serve per l’esportazione mobile. In caso di errore nella creazione dello ZIP viene mostrato un messaggio di errore e l’esportazione può essere ripetuta; non vengono avviati download parziali.
+
 ## Verifiche di questa consegna
 
-30 test automatici superati. Verificati export vettoriale puro, compatibilità con immagini precedenti, percorsi di gomma, tratti e punti singoli, font, numerazione, dati e cache offline. Nei PDF di prova analizzati sono presenti zero immagini per lo sketch vettoriale puro; nel caso misto è presente soltanto l’immagine di base. Verificati anche il passaggio dello sketch su una pagina successiva e la resa visiva dei PDF generati.
+31 test automatici superati. Verificato il singolo download ZIP con i profili simulati di iPhone, Android e iPad con modalità desktop; estratti e letti entrambi i file. Verificati anche i due download desktop e i controlli preesistenti su PDF, Sketch, dati e cache offline. Un archivio di prova è stato inoltre aperto con una libreria indipendente: CRC corretti, JSON leggibile e PDF con tracciati vettoriali conservati.
+
+La simulazione dei dispositivi non sostituisce la prova del download nel browser del telefono reale.

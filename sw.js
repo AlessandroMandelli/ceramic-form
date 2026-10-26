@@ -1,5 +1,5 @@
 /* Ogni rilascio ha una cache completa e isolata per questa PWA. */
-const VERSION = "1.5.0";
+const VERSION = "1.5.2";
 const PREFIX = `ceramic-${self.registration.scope}-`;
 const CACHE = PREFIX + VERSION;
 const ASSETS = [
@@ -11,6 +11,7 @@ const ASSETS = [
   "./bootstrap.js",
   "./app.bundle.js",
   "./vendor/jspdf.umd.min.js",
+  "./vendor/jszip.min.js",
   "./assets/excavation.webp",
   "./assets/LiberationSans-Regular.ttf",
   "./assets/LiberationSans-Bold.ttf",

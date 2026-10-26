@@ -204,7 +204,7 @@ textarea {
   border-radius: 4px;
   background: rgb(255 255 255 / 88%);
   color: #657266;
-  font-size: 13px;
+  font-size: inherit;
   line-height: 1.4;
   pointer-events: none;
 }
@@ -424,16 +424,6 @@ dialog::backdrop {
 .section-label {
   font: inherit;
 }
-.export-links {
-  margin: 0 0 22px;
-  text-align: right;
-  font-size: 14px;
-}
-.export-links a {
-  color: var(--green);
-  text-underline-offset: 3px;
-  margin-left: 6px;
-}
 .toast {
   position: fixed;
   bottom: 22px;
@@ -642,11 +632,5 @@ dialog::backdrop {
   }
   .home-actions button {
     min-height: 44px;
-  }
-}
-
-@media (max-width: 800px) {
-  .export-links {
-    text-align: left;
   }
 }

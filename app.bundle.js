@@ -539,10 +539,10 @@
             throw Error(
               "PDF font unavailable. Reopen the app online and try again."
             );
-          const bytes = new Uint8Array(await response.arrayBuffer());
+          const bytes2 = new Uint8Array(await response.arrayBuffer());
           let binary = "";
-          for (let i = 0; i < bytes.length; i += 8192)
-            binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+          for (let i = 0; i < bytes2.length; i += 8192)
+            binary += String.fromCharCode(...bytes2.subarray(i, i + 8192));
           return btoa(binary);
         })
       ).catch((error) => {
@@ -752,13 +752,56 @@
     return doc;
   }
 
+  // js/export-archive.js
+  function needsArchive(device = navigator) {
+    return /Android|iPhone|iPad|iPod/i.test(device.userAgent || "") || device.platform === "MacIntel" && device.maxTouchPoints > 1;
+  }
+  var engine2;
+  function loadZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (!engine2)
+      engine2 = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "./vendor/jszip.min.js";
+        script.onload = () => window.JSZip ? resolve(window.JSZip) : reject(Error("ZIP engine not initialized."));
+        script.onerror = () => {
+          script.remove();
+          reject(Error("ZIP engine unavailable. Reopen the app online."));
+        };
+        document.head.append(script);
+      }).catch((error) => {
+        engine2 = null;
+        throw error;
+      });
+    return engine2;
+  }
+  function bytes(blob) {
+    if (typeof blob.arrayBuffer === "function") return blob.arrayBuffer();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(Error("Unable to prepare the download."));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+  async function createArchive(files) {
+    const JSZip = await loadZip();
+    const archive = new JSZip();
+    for (const { name, blob } of files) archive.file(name, await bytes(blob));
+    return archive.generateAsync({
+      type: "blob",
+      mimeType: "application/zip",
+      compression: "DEFLATE",
+      compressionOptions: { level: 3 }
+    });
+  }
+
   // js/app.js
   var $ = (selector) => document.querySelector(selector);
   var sketch = emptySketch();
   var dirty = false;
   var busy = false;
   var revision = 0;
-  var exportUrls = [];
   var createdAt = (/* @__PURE__ */ new Date()).toISOString();
   function notify(message) {
     $("#status").textContent = message;
@@ -857,7 +900,6 @@
     HTMLFormElement.prototype.reset.call($("#record"));
     $("#rows").replaceChildren();
     row();
-    clearExportLinks();
     revision++;
     sketch = emptySketch();
     createdAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -900,12 +942,16 @@
     document.dispatchEvent(new Event("ceramic:home"));
     $("#new").focus();
   };
-  function clearExportLinks() {
-    for (const url of exportUrls) URL.revokeObjectURL(url);
-    exportUrls = [];
-    $("#export-links").hidden = true;
-    for (const selector of ["#download-pdf", "#download-json"])
-      $(selector).removeAttribute("href");
+  function downloadFile(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 6e4);
   }
   $("#export-files").onclick = async () => {
     if (busy) return;
@@ -923,31 +969,22 @@
       const doc = await createPdf(record);
       const files = [
         {
-          selector: "#download-pdf",
           blob: doc.output("blob"),
           name: `${stem}.pdf`
         },
         {
-          selector: "#download-json",
           blob: new Blob([JSON.stringify(record, null, 2)], {
             type: "application/json"
           }),
           name: `${stem}.json`
         }
       ];
-      clearExportLinks();
-      for (const file of files) {
-        const link = $(file.selector);
-        link.href = URL.createObjectURL(file.blob);
-        exportUrls.push(link.href);
-        link.download = file.name;
+      if (needsArchive()) {
+        downloadFile(await createArchive(files), `${stem}.zip`);
+      } else {
+        for (const file of files) downloadFile(file.blob, file.name);
       }
-      $("#export-links").hidden = false;
-      for (const file of files) $(file.selector).click();
       if (revision === snapshotRevision) dirty = false;
-      notify(
-        "PDF and JSON are ready. You can also use the links below the button."
-      );
     } catch (error) {
       notify(
         "Export failed. Please try again. If the problem persists, reopen the app online."
