@@ -67,6 +67,19 @@ test("PDF labels and colons are bold, values regular, counts centered and every 
   ])
     assert.ok(calls.some((c) => c.args[0] === label && c.font === "bold"));
   assert.ok(calls.some((c) => c.args[0] === "Dime" && c.font === "normal"));
+  for (const header of ["Rims", "Handles", "Feet", "Bodies"]) {
+    const entries = calls.filter((call) => call.args[0] === header);
+    assert.ok(entries.length > 0);
+    for (const entry of entries) {
+      assert.equal(entry.font, "bold");
+      assert.equal(entry.args[3].align, "center");
+      assert.equal(entry.args[3].baseline, "middle");
+    }
+  }
+  assert.equal(
+    calls.some((call) => /Tap to (draw|edit)/.test(String(call.args[0]))),
+    false,
+  );
   const numbers = calls.filter((c) => c.args[0] === "7");
   assert.equal(numbers.length, 90);
   for (const call of numbers) {
@@ -84,4 +97,65 @@ test("PDF labels and colons are bold, values regular, counts centered and every 
           c.args[3].align === "right",
       ),
     );
+});
+
+test("new sketches use PDF vector paths even when a flattened preview is available", async () => {
+  const record = {
+    header: { excavationSite: "Dime", area: "A", stratUnit: "1", room: "2" },
+    rows: [],
+    remarks: "",
+    sketchPng: "not-an-image-on-purpose",
+    sketch: {
+      base: "",
+      strokes: [
+        {
+          tool: "pen",
+          width: 2,
+          points: [
+            [0.1, 0.2],
+            [0.8, 0.2],
+          ],
+        },
+        {
+          tool: "eraser",
+          width: 12,
+          points: [
+            [0.4, 0.1],
+            [0.4, 0.3],
+          ],
+        },
+        { tool: "pen", width: 4, points: [[0.9, 0.8]] },
+      ],
+    },
+  };
+  const doc = await createPdf(record);
+  const pdf = doc.output();
+  assert.ok(!pdf.includes("/Subtype /Image"));
+  assert.equal(doc.getNumberOfPages(), 1);
+  assert.equal(record.sketch.strokes.length, 3);
+});
+
+test("legacy bitmap remains raster with later pen and eraser strokes added as vectors", async () => {
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR4nGP8//8/AwwwMSAB3BwAlm4DBfIlvvkAAAAASUVORK5CYII=";
+  const record = {
+    header: { excavationSite: "Dime", area: "A", stratUnit: "1", room: "2" },
+    rows: [],
+    remarks: "",
+    sketch: {
+      base: png,
+      strokes: [
+        {
+          tool: "pen",
+          width: 2,
+          points: [
+            [0.1, 0.1],
+            [0.2, 0.2],
+          ],
+        },
+      ],
+    },
+  };
+  const doc = await createPdf(record);
+  assert.ok(doc.output().includes("/Subtype /Image"));
 });

@@ -282,7 +282,7 @@ test("layout, placeholders and all Sketch controls are in their requested locati
     assert.ok($(".right-column #remarks"));
     assert.ok($(".right-column #open-sketch"));
     assert.equal($("#remarks").placeholder, "Type here...");
-    assert.equal($("#sketch-placeholder").textContent.trim(), "tap to draw");
+    assert.equal($("#sketch-placeholder").textContent.trim(), "Tap to draw");
     assert.equal($("#sketch-title").textContent, "Sketch");
     assert.deepEqual(
       [...$("#sketch-dialog header").querySelectorAll("button")].map(
@@ -530,6 +530,43 @@ test("capture viewport retains the selected pen or eraser cursor, with uniform c
     }
     for (const button of $("#sketch-dialog").querySelectorAll("button"))
       assert.equal(w.getComputedStyle(button).width, "104px");
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+test("Sketch prompts stay inside the rounded preview, in its top-left corner", async () => {
+  const { dom, w, $ } = setup();
+  try {
+    const style = w.document.createElement("style");
+    style.textContent = read("styles.css");
+    w.document.head.append(style);
+    assert.equal($("#open-sketch").contains($("#sketch-placeholder")), true);
+    assert.equal($("#open-sketch").contains($("#sketch-hint")), true);
+    assert.equal($("#sketch-placeholder").textContent.trim(), "Tap to draw");
+    assert.equal($("#sketch-hint").textContent.trim(), "Tap to edit");
+    assert.equal(w.getComputedStyle($("#open-sketch")).overflow, "hidden");
+    assert.equal(w.getComputedStyle($("#open-sketch")).borderRadius, "7px");
+    for (const id of ["#sketch-placeholder", "#sketch-hint"]) {
+      const css = w.getComputedStyle($(id));
+      assert.equal(css.position, "absolute");
+      assert.equal(css.top, "10px");
+      assert.equal(css.left, "10px");
+    }
+    const headers = [...dom.window.document.querySelectorAll("th")].slice(1);
+    for (const header of headers) {
+      const css = w.getComputedStyle(header);
+      assert.equal(css.textAlign, "center");
+      assert.equal(css.verticalAlign, "middle");
+    }
+    $("#new").click();
+    $("#open-sketch").click();
+    await tick();
+    $("#save-sketch").click();
+    await tick();
+    assert.equal($("#sketch-placeholder").hidden, false);
+    assert.equal($("#sketch-hint").hidden, true);
   } finally {
     await tick();
     dom.window.close();
