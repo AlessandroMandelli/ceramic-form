@@ -41,7 +41,16 @@ function setup({ app = true, standalone = false } = {}) {
     };
   };
   w.HTMLCanvasElement.prototype.toDataURL = () =>
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=";
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR4nGP8//8/AwwwMSAB3BwAlm4DBfIlvvkAAAAASUVORK5CYII=";
+  const viewport = w.document.querySelector("#sketch-viewport");
+  Object.defineProperty(viewport, "clientWidth", { value: 1000 });
+  Object.defineProperty(viewport, "clientHeight", { value: 700 });
+  viewport.getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    width: 1000,
+    height: 700,
+  });
   const downloads = [];
   w.URL.createObjectURL = (blob) => {
     downloads.push(blob);
@@ -72,7 +81,9 @@ test("new sheet opens, numeric fields accept counts, reset No preserves data and
     assert.equal($("#new").disabled, false);
     $("#new").click();
     assert.equal($("#form-view").hidden, false);
-    assert.equal($("#rows").children.length, 4);
+    assert.equal($("#rows").children.length, 1);
+    $("#add-row").click();
+    assert.equal($("#rows").children.length, 2);
     $("#area").value = "A12";
     $("#area").dispatchEvent(new w.Event("input", { bubbles: true }));
     const numeric = $('#rows tr input[data-key="rims"]');
@@ -139,7 +150,7 @@ test("install invokes native prompt, handles rejection and hides button when ins
     dom.window.close();
   }
 });
-test("JSON export includes entered values and sketch strokes after undo and redo", async () => {
+test("one export produces PDF and JSON with matching names and restored sketch strokes", async () => {
   const { dom, w, $, errors, downloads } = setup();
   try {
     $("#new").click();
@@ -157,7 +168,7 @@ test("JSON export includes entered values and sketch strokes after undo and redo
       height: 900,
     });
     const pointer = (name, x, y) => {
-      const event = new w.Event(name, { cancelable: true });
+      const event = new w.Event(name, { cancelable: true, bubbles: true });
       Object.assign(event, {
         pointerType: "pen",
         pointerId: 1,
@@ -177,9 +188,16 @@ test("JSON export includes entered values and sketch strokes after undo and redo
     await tick();
     assert.equal($("#sketch-dialog").open, false);
     assert.equal($("#sketch-preview").hidden, false);
-    $("#json").click();
-    await tick();
-    const record = JSON.parse(await blobText(w, downloads[0]));
+    enablePdf(w);
+    await $("#export-files").onclick();
+    assert.equal(downloads.length, 2, $("#status").textContent);
+    assert.equal(downloads[0].type, "application/pdf");
+    assert.ok(downloads[0].size > 1000);
+    assert.equal(
+      $("#download-pdf").download.replace(/\.pdf$/, ""),
+      $("#download-json").download.replace(/\.json$/, ""),
+    );
+    const record = JSON.parse(await blobText(w, downloads[1]));
     assert.equal(record.header.excavationSite, "Dime");
     assert.equal(record.header.area, "A12");
     assert.equal(record.sketch.strokes.length, 1);
@@ -226,6 +244,165 @@ test("legacy import fills the form and malformed JSON preserves existing values"
     await input.onchange({ target: input });
     assert.equal($("#area").value, "A9");
     assert.match($("#status").textContent, /Importazione non riuscita/);
+    assert.deepEqual(errors, []);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+function enablePdf(w) {
+  w.TextEncoder = TextEncoder;
+  w.TextDecoder = TextDecoder;
+  w.eval(read("vendor/jspdf.umd.min.js"));
+  w.fetch = async (url) => {
+    const bytes = fs.readFileSync(
+      new URL("../" + url.replace("./", ""), import.meta.url),
+    );
+    return {
+      ok: true,
+      arrayBuffer: async () =>
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ),
+    };
+  };
+}
+
+test("layout, placeholders and all Sketch controls are in their requested locations", async () => {
+  const { dom, $ } = setup();
+  try {
+    assert.equal(
+      $("#stratUnit").closest("label").textContent.trim(),
+      "Stratigraphic Unit",
+    );
+    assert.ok($(".left-column .metadata"));
+    assert.ok($(".left-column .fragments"));
+    assert.ok($(".right-column #remarks"));
+    assert.ok($(".right-column #open-sketch"));
+    assert.equal($("#remarks").placeholder, "type here");
+    assert.equal($("#sketch-placeholder").textContent.trim(), "tap to draw");
+    assert.equal($("#sketch-title").textContent, "Sketch");
+    assert.equal($("#sketch-dialog header button"), null);
+    assert.equal(
+      $("#sketch-dialog").querySelectorAll("button").length,
+      $(".sketch-dock").querySelectorAll("button").length,
+    );
+    assert.equal($("#pdf"), null);
+    assert.equal($("#json"), null);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+test("Penna and Gomma are explicit modes, zoom does not change exported stroke coordinates", async () => {
+  const { dom, w, $, downloads, errors } = setup();
+  try {
+    $("#new").click();
+    $("#open-sketch").click();
+    await tick();
+    $("#eraser").click();
+    assert.equal($("#sketch-viewport").dataset.tool, "eraser");
+    $("#eraser").click();
+    assert.equal($("#sketch-viewport").dataset.tool, "eraser");
+    $("#pen").click();
+    assert.equal($("#sketch-viewport").dataset.tool, "pen");
+    $("#zoom-in").click();
+    assert.equal($("#zoom-level").value, "125%");
+    $("#fit-sketch").click();
+    assert.equal($("#zoom-level").value, "100%");
+    $("#save-sketch").click();
+    enablePdf(w);
+    await $("#export-files").onclick();
+    const record = JSON.parse(await blobText(w, downloads[1]));
+    assert.equal(record.sketch.strokes.length, 0);
+    assert.equal("zoom" in record.sketch, false);
+    assert.deepEqual(errors, []);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+test("two-finger pinch zooms without leaving a provisional drawing stroke", async () => {
+  const { dom, w, $, downloads, errors } = setup();
+  try {
+    $("#new").click();
+    $("#open-sketch").click();
+    await tick();
+    const canvas = $("#canvas");
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 900,
+    });
+    const pointer = (name, id, x, y) => {
+      const event = new w.Event(name, { cancelable: true, bubbles: true });
+      Object.assign(event, {
+        pointerType: "touch",
+        pointerId: id,
+        clientX: x,
+        clientY: y,
+        button: 0,
+      });
+      canvas.dispatchEvent(event);
+    };
+    pointer("pointerdown", 1, 200, 200);
+    pointer("pointerdown", 2, 400, 200);
+    pointer("pointermove", 2, 500, 200);
+    assert.equal($("#zoom-level").value, "150%");
+    pointer("pointerup", 2, 500, 200);
+    pointer("pointerup", 1, 200, 200);
+    $("#save-sketch").click();
+    enablePdf(w);
+    await $("#export-files").onclick();
+    const record = JSON.parse(await blobText(w, downloads[1]));
+    assert.equal(record.sketch.strokes.length, 0);
+    assert.deepEqual(errors, []);
+  } finally {
+    await tick();
+    dom.window.close();
+  }
+});
+
+test("stylus takes over an initial finger contact and ignores the palm while drawing", async () => {
+  const { dom, w, $, downloads, errors } = setup();
+  try {
+    $("#new").click();
+    $("#open-sketch").click();
+    await tick();
+    const canvas = $("#canvas");
+    canvas.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 900,
+    });
+    const pointer = (name, id, type, x, y) => {
+      const event = new w.Event(name, { cancelable: true, bubbles: true });
+      Object.assign(event, {
+        pointerType: type,
+        pointerId: id,
+        clientX: x,
+        clientY: y,
+        button: 0,
+      });
+      canvas.dispatchEvent(event);
+    };
+    pointer("pointerdown", 1, "touch", 200, 200);
+    pointer("pointerdown", 2, "pen", 100, 100);
+    pointer("pointerdown", 3, "touch", 500, 500);
+    pointer("pointermove", 2, "pen", 300, 300);
+    pointer("pointerup", 2, "pen", 300, 300);
+    $("#save-sketch").click();
+    enablePdf(w);
+    await $("#export-files").onclick();
+    const record = JSON.parse(await blobText(w, downloads[1]));
+    assert.equal(record.sketch.strokes.length, 1);
+    assert.equal(record.sketch.strokes[0].points.length, 2);
     assert.deepEqual(errors, []);
   } finally {
     await tick();
