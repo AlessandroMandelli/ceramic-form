@@ -265,17 +265,6 @@ dialog::backdrop {
 .sketch-editor h2 {
   margin: 0;
 }
-.sketch-tools {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.sketch-tools button {
-  padding: 9px 13px;
-}
-.sketch-tools [aria-pressed="true"] {
-  background: #e9ddc8;
-}
 /* The white sheet is transformed inside a separate, clipped workspace. */
 .canvas-area {
   flex: 1 0 180px;
@@ -303,12 +292,14 @@ dialog::backdrop {
   transform-origin: 0 0;
   touch-action: none;
 }
-.canvas-area[data-tool="pen"] #canvas {
+.canvas-area[data-tool="pen"],
+.canvas-area[data-tool="pen"] * {
   cursor:
     url("./assets/cursor-pen.svg") 2 30,
     crosshair;
 }
-.canvas-area[data-tool="eraser"] #canvas {
+.canvas-area[data-tool="eraser"],
+.canvas-area[data-tool="eraser"] * {
   cursor:
     url("./assets/cursor-eraser.svg") 6 26,
     cell;
@@ -319,41 +310,101 @@ dialog::backdrop {
 .canvas-area[data-tool="pan"]:active {
   cursor: grabbing;
 }
+/* One shared grid keeps the navigation and drawing columns aligned. */
 .sketch-dock {
   flex: 0 0 auto;
-  display: grid;
-  gap: 12px;
-  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  overflow-x: auto;
+  padding: 2px 0 max(2px, env(safe-area-inset-bottom));
 }
-.sketch-settings,
-.zoom-tools,
+.toolbar-grid {
+  min-width: 850px;
+  display: grid;
+  gap: 6px;
+}
+.navigation-row,
+.drawing-row {
+  display: grid;
+  grid-template-columns: repeat(5, 104px) minmax(280px, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.navigation-row {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.sketch-editor button {
+  width: 104px;
+  min-height: 32px;
+  height: 32px;
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.sketch-editor [aria-pressed="true"] {
+  background: var(--green);
+  color: white;
+}
+.sketch-exit {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
 .pen-tools {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-}
-.sketch-settings {
-  justify-content: space-between;
-}
-.pen-tools input {
-  width: 140px;
-  padding: 0;
+  padding-left: 8px;
+  white-space: nowrap;
 }
 .pen-tools label {
-  font-size: 14px;
+  font-size: 13px;
 }
-.sketch-tools [aria-pressed="true"] {
-  background: var(--green);
-  color: white;
+.pen-tools input {
+  width: 120px;
+  padding: 0;
 }
 #zoom-level {
-  min-width: 48px;
+  width: 104px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-#save-sketch {
-  margin-left: auto;
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.row-actions button {
+  margin: 0;
+}
+@media (pointer: coarse) {
+  .sketch-editor button {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+@media (min-width: 801px) {
+  .columns {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+  .left-column,
+  .right-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .sketch-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .sketch-card .sketch-box {
+    flex: 1;
+    min-height: 300px;
+    height: auto;
+  }
 }
 .section-label {
   font: inherit;
@@ -580,29 +631,6 @@ dialog::backdrop {
 }
 
 @media (max-width: 800px) {
-  .sketch-dock {
-    gap: 10px;
-  }
-  .sketch-settings {
-    gap: 10px;
-  }
-  .sketch-tools button,
-  .zoom-tools button {
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-  .sketch-tools {
-    gap: 6px;
-  }
-  .pen-tools {
-    width: 100%;
-  }
-  .zoom-tools {
-    flex: 1;
-  }
-  #save-sketch {
-    flex: 0 0 auto;
-  }
   .export-links {
     text-align: left;
   }

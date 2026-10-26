@@ -36,7 +36,8 @@
 
   async function install() {
     if (prompting) return;
-    if (standalone()) return help("L’app è già aperta in modalità installata.");
+    if (standalone())
+      return help("The app is already running in installed mode.");
     if (promptEvent) {
       const event = promptEvent;
       promptEvent = null;
@@ -47,7 +48,7 @@
         await event.userChoice;
       } catch {
         help(
-          "Apri il menu di Chrome o Edge e scegli “Installa app” oppure “Installa pagina come app”.",
+          "Open the Chrome or Edge menu and choose “Install app” or “Install page as app”.",
         );
       } finally {
         prompting = false;
@@ -57,7 +58,7 @@
     }
     if (location.protocol === "file:") {
       return help(
-        "Per installare l’app apri l’indirizzo HTTPS pubblicato su GitHub Pages. Il file aperto direttamente dal computer non può essere installato.",
+        "To install the app, open its HTTPS address on GitHub Pages. A file opened directly from your computer cannot be installed.",
       );
     }
     const ios =
@@ -65,8 +66,8 @@
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     help(
       ios
-        ? "Nel menu Condividi scegli “Aggiungi alla schermata Home”. Se la voce non compare, apri questo sito in Safari."
-        : "Se la richiesta di installazione non compare, usa il menu di Chrome o Edge e scegli “Installa app” o “Installa pagina come app”. Se è già installata, aprila dall’elenco delle applicazioni. Su Safari per Mac usa File → Aggiungi al Dock. Nei browser senza installazione puoi utilizzare questa pagina.",
+        ? "In the Share menu, choose “Add to Home Screen”. If this option is missing, open this site in Safari."
+        : "If the installation prompt does not appear, use the Chrome or Edge menu and choose “Install app” or “Install page as app”. If already installed, open it from your applications. In Safari for Mac, use File → Add to Dock. Browsers without installation support can still use this page.",
     );
   }
 
@@ -83,11 +84,11 @@
         .register("./sw.js", { scope: "./", updateViaCache: "none" })
         .then((registration) => registration.update())
         .catch((error) => {
-          console.warn("Preparazione PWA:", error);
+          console.warn("PWA preparation:", error);
           const status = document.getElementById("home-status");
           status.hidden = false;
           status.textContent =
-            "La copia offline non è ancora pronta. Riapri questa pagina online per completare il caricamento.";
+            "The offline copy is not ready yet. Reopen this page online to finish loading.";
         });
     }
   }

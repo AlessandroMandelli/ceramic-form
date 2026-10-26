@@ -6,7 +6,7 @@
     if (!status) return;
     status.hidden = false;
     status.textContent =
-      "Avvio non completato. Ricarica la pagina; se il problema persiste verifica di aver caricato tutti i file dello ZIP, incluso app.bundle.js.";
+      "Startup incomplete. Reload the page. If the problem persists, check that all ZIP files have been uploaded, including app.bundle.js.";
   }
   window.addEventListener("error", reportFailure);
   window.addEventListener("unhandledrejection", reportFailure);

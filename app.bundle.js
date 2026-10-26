@@ -22,28 +22,28 @@
   function text(value, limit = 1e5) {
     if (value == null) return "";
     if (!["string", "number"].includes(typeof value) || String(value).length > limit)
-      throw Error("Campo JSON non valido o troppo lungo.");
+      throw Error("Invalid JSON field or text too long.");
     return String(value);
   }
   function image(value) {
     if (!value) return "";
     if (typeof value !== "string" || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value) || value.length > 2e7)
-      throw Error("Immagine dello schizzo non valida.");
+      throw Error("Invalid sketch image.");
     return value;
   }
   function parseRecord(data) {
     if (!data || typeof data !== "object" || !Array.isArray(data.rows) || !data.header || data.rows.length > 5e3)
-      throw Error("Il file non \xE8 una scheda Ceramic compatibile.");
+      throw Error("This file is not a compatible Ceramic form.");
     const header = Object.fromEntries(
       HEADER.map((key) => [key, text(data.header[key], 300)])
     );
     const rows = data.rows.map((row2) => {
-      if (!row2 || typeof row2 !== "object") throw Error("Riga non valida.");
+      if (!row2 || typeof row2 !== "object") throw Error("Invalid row.");
       return Object.fromEntries(
         COLUMNS.map((key) => {
           const value = text(row2[key], key === "typeForm" ? 1e3 : 12);
           if (key !== "typeForm" && !/^\d*$/.test(value))
-            throw Error("I conteggi devono essere numeri interi non negativi.");
+            throw Error("Counts must be non-negative whole numbers.");
           return [key, value];
         })
       );
@@ -52,16 +52,16 @@
     if (data.schema === "ceramic-summary-form-pwa-v3" && data.sketch) {
       sketch2.base = image(data.sketch.base);
       if (!Array.isArray(data.sketch.strokes) || data.sketch.strokes.length > 3e4)
-        throw Error("Schizzo troppo grande.");
+        throw Error("Sketch too large.");
       let pointCount = 0;
       sketch2.strokes = data.sketch.strokes.map((stroke) => {
         if (!["pen", "eraser"].includes(stroke.tool) || !Number.isFinite(stroke.width) || stroke.width <= 0 || stroke.width > 100 || !Array.isArray(stroke.points))
-          throw Error("Tratto non valido.");
+          throw Error("Invalid stroke.");
         pointCount += stroke.points.length;
-        if (pointCount > 1e6) throw Error("Troppi punti nello schizzo.");
+        if (pointCount > 1e6) throw Error("Too many points in the sketch.");
         const points = stroke.points.map((point) => {
           if (!Array.isArray(point) || point.length !== 2 || point.some((n) => !Number.isFinite(n) || n < 0 || n > 1))
-            throw Error("Coordinate dello schizzo non valide.");
+            throw Error("Invalid sketch coordinates.");
           return [...point];
         });
         return { tool: stroke.tool, width: stroke.width, points };
@@ -218,6 +218,7 @@
         this.applyView();
       };
       document.querySelector("#save-sketch").onclick = () => this.save();
+      document.querySelector("#back-sketch").onclick = () => this.save();
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
         this.save();
@@ -412,7 +413,7 @@
     return new Promise((resolve, reject) => {
       const image2 = new Image();
       image2.onload = () => resolve(image2);
-      image2.onerror = () => reject(Error("Impossibile leggere lo schizzo."));
+      image2.onerror = () => reject(Error("Unable to read the sketch."));
       image2.src = source;
     });
   }
@@ -466,10 +467,10 @@
       engine = new Promise((resolve, reject) => {
         const script = document.createElement("script");
         script.src = "./vendor/jspdf.umd.min.js";
-        script.onload = () => window.jspdf ? resolve() : reject(Error("Motore PDF non inizializzato."));
+        script.onload = () => window.jspdf ? resolve() : reject(Error("PDF engine not initialized."));
         script.onerror = () => {
           script.remove();
-          reject(Error("Motore PDF non disponibile. Riapri l\u2019app online."));
+          reject(Error("PDF engine unavailable. Reopen the app online."));
         };
         document.head.append(script);
       }).catch((error) => {
@@ -485,7 +486,7 @@
           const response = await fetch(`./assets/${name}.ttf`);
           if (!response.ok)
             throw Error(
-              "Font PDF non disponibile. Riprova dopo un caricamento online."
+              "PDF font unavailable. Reopen the app online and try again."
             );
           const bytes = new Uint8Array(await response.arrayBuffer());
           let binary = "";
@@ -524,26 +525,57 @@
       doc.setFontSize(size);
       return doc.splitTextToSize(String(s), w);
     };
+    function labelLines(label, value, width) {
+      const prefix = `${label}:`;
+      text2("", 0, 0, true);
+      const prefixWidth = doc.getTextWidth(prefix + " ");
+      text2("", 0, 0, false);
+      const lines = [{ label: prefix, value: "", indent: prefixWidth }];
+      for (const character of String(value ?? "")) {
+        let last = lines[lines.length - 1];
+        if (character === "\n") {
+          lines.push({ label: "", value: "", indent: 0 });
+          continue;
+        }
+        if (doc.getTextWidth(last.value + character) + last.indent > width) {
+          last = { label: "", value: "", indent: 0 };
+          lines.push(last);
+        }
+        last.value += character;
+      }
+      return lines;
+    }
+    function drawLabel(lines, x, y) {
+      lines.forEach((entry, index) => {
+        const baseline = y + index * 4.3;
+        if (entry.label) text2(entry.label, x, baseline, true);
+        if (entry.value) text2(entry.value, x + entry.indent, baseline);
+      });
+    }
     let tableY, notesY, top;
     function header(continuation = false) {
       doc.setLineWidth(0.2);
       doc.setDrawColor(0);
       doc.setTextColor(0);
-      const site = wrap(`Excavation site: ${record.header.excavationSite}`, 82);
+      const site = labelLines(
+        "Excavation site",
+        record.header.excavationSite,
+        82
+      );
       const h = Math.max(12, site.length * 4.3 + 5);
       doc.rect(left, 10, 190, h);
       line(112, 10, 112, 10 + h);
       text2("Ceramic - Summary form", 13, 17, true, 11);
-      text2(site, 115, 16, false, 9);
+      drawLabel(site, 115, 16);
       const labels = [
         ["Area", record.header.area],
-        ["Strat. Unit", record.header.stratUnit],
+        ["Stratigraphic unit", record.header.stratUnit],
         ["Room", record.header.room]
       ];
-      const metadata = labels.map(([key, value]) => wrap(`${key}: ${value}`, 58));
-      const mh = Math.max(11, ...metadata.map((t) => t.length * 4.3 + 5));
+      const metadata = labels.map(([key, value]) => labelLines(key, value, 58));
+      const mh = Math.max(11, ...metadata.map((lines) => lines.length * 4.3 + 5));
       doc.rect(left, 10 + h, 190, mh);
-      metadata.forEach((t, i) => text2(t, 13 + i * 63, 16 + h));
+      metadata.forEach((lines, i) => drawLabel(lines, 13 + i * 63, 16 + h));
       top = 10 + h + mh;
       tableY = top + 15;
       notesY = top + 7;
@@ -587,7 +619,21 @@
         let x = left;
         cells.forEach((lines, i) => {
           doc.rect(x, tableY, widths[i], height);
-          text2(lines.splice(0, count), x + 1.5, tableY + 4.3, false, 8.5);
+          const content = lines.splice(0, count);
+          if (i === 0) {
+            if (content.length) text2(content, x + 1.5, tableY + 4.3, false, 8.5);
+          } else {
+            doc.setFont("Liberation", "normal");
+            doc.setFontSize(8.5);
+            content.forEach(
+              (value, index) => doc.text(
+                value,
+                x + widths[i] / 2,
+                tableY + height / 2 + (index - (content.length - 1) / 2) * 4,
+                { align: "center", baseline: "middle" }
+              )
+            );
+          }
           x += widths[i];
         });
         tableY += height;
@@ -615,9 +661,15 @@
           sketchPending = false;
         }
       }
-      text2(String(page), 195, 289, false, 8);
       page++;
     } while (rowIndex < rowQueue.length || noteIndex < notes.length || sketchPending);
+    const totalPages = doc.getNumberOfPages();
+    for (let number = 1; number <= totalPages; number++) {
+      doc.setPage(number);
+      doc.setFont("Liberation", "normal");
+      doc.setFontSize(8);
+      doc.text(`${number}/${totalPages}`, 200, 289, { align: "right" });
+    }
     doc.setProperties({
       title: "Ceramic - Summary form",
       subject: record.header.excavationSite,
@@ -656,7 +708,7 @@
       input.maxLength = index ? 12 : 1e3;
       input.setAttribute(
         "aria-label",
-        `${["Type/Form", "Rims", "Handles", "Feet", "Bodies"][index]} \u2013 riga ${$("#rows").children.length + 1}`
+        `${["Type/Form", "Rims", "Handles", "Feet", "Bodies"][index]} \u2013 row ${$("#rows").children.length + 1}`
       );
       if (index) {
         input.pattern = "[0-9]*";
@@ -668,7 +720,31 @@
       tr.append(td);
     });
     $("#rows").append(tr);
+    updateRemoveButton();
   }
+  function updateRemoveButton() {
+    $("#remove-row").disabled = busy || $("#rows").children.length <= 1;
+  }
+  function removeLastRow() {
+    if ($("#rows").children.length <= 1) return;
+    $("#rows").lastElementChild.remove();
+    dirty = true;
+    revision++;
+    updateRemoveButton();
+  }
+  $("#remove-row").onclick = () => {
+    if ($("#rows").children.length <= 1) return;
+    const filled = [
+      ...$("#rows").lastElementChild.querySelectorAll("input")
+    ].some((input) => input.value.trim());
+    if (filled) $("#remove-dialog").showModal();
+    else removeLastRow();
+  };
+  $("#remove-no").onclick = () => $("#remove-dialog").close();
+  $("#remove-yes").onclick = () => {
+    removeLastRow();
+    $("#remove-dialog").close();
+  };
   function collect() {
     return {
       schema: "ceramic-summary-form-pwa-v3",
@@ -733,7 +809,7 @@
   $("#remarks").addEventListener("input", grow);
   $("#add-row").onclick = () => {
     if ($("#rows").children.length >= 5e3)
-      return notify("Limite di 5.000 righe raggiunto.");
+      return notify("The limit of 5,000 rows has been reached.");
     row();
     dirty = true;
     revision++;
@@ -762,8 +838,9 @@
     busy = true;
     const button = $("#export-files");
     button.disabled = true;
+    updateRemoveButton();
     $("#reset-sheet").disabled = true;
-    button.textContent = "Preparazione\u2026";
+    button.textContent = "Preparing\u2026";
     const snapshotRevision = revision;
     try {
       const record = collect();
@@ -795,15 +872,18 @@
       for (const file of files) $(file.selector).click();
       if (revision === snapshotRevision) dirty = false;
       notify(
-        "PDF e JSON pronti. Puoi riaprirli anche dai collegamenti sotto il pulsante."
+        "PDF and JSON are ready. You can also use the links below the button."
       );
     } catch (error) {
-      notify(`Esportazione non riuscita: ${error.message}`);
+      notify(
+        "Export failed. Please try again. If the problem persists, reopen the app online."
+      );
     } finally {
       busy = false;
+      updateRemoveButton();
       button.disabled = false;
       $("#reset-sheet").disabled = false;
-      button.textContent = "Salva PDF ed esporta JSON";
+      button.textContent = "Save PDF and JSON";
     }
   };
   $("#import").onclick = () => $("#json-file").click();
@@ -811,8 +891,14 @@
     const file = event.target.files[0];
     if (!file) return;
     try {
-      if (file.size > 3e7) throw Error("Il file supera il limite di 30 MB.");
-      const raw = JSON.parse(await file.text()), record = parseRecord(raw);
+      if (file.size > 3e7) throw Error("The file exceeds the 30 MB limit.");
+      let raw;
+      try {
+        raw = JSON.parse(await file.text());
+      } catch {
+        throw Error("Invalid or unreadable JSON file.");
+      }
+      const record = parseRecord(raw);
       await sketchPng(record.sketch);
       reset();
       HEADER.forEach((key) => $(`#${key}`).value = record.header[key]);
@@ -824,9 +910,9 @@
       await preview();
       dirty = false;
       showForm();
-      notify("Scheda importata.");
+      notify("Form imported.");
     } catch (error) {
-      notify(`Importazione non riuscita: ${error.message}`);
+      notify(`Import failed: ${error.message}`);
     } finally {
       event.target.value = "";
     }

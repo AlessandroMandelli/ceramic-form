@@ -14,7 +14,7 @@ GitHub può spostare le voci delle impostazioni: la destinazione rimane la carte
 
 ## Installazione
 
-- **Chrome / Edge compatibili:** premi **Installa app** nella home. Se il browser ha già reso disponibile la richiesta, si aprirà il suo pannello di installazione. Altrimenti l’app indica come usare il menu del browser.
+- **Chrome / Edge compatibili:** premi **Install app** nella home. Se il browser ha già reso disponibile la richiesta, si aprirà il suo pannello di installazione. Altrimenti l’app indica come usare il menu del browser.
 - **iPhone / iPad:** menu **Condividi → Aggiungi alla schermata Home**; se la voce manca nel browser usato, apri il sito in Safari.
 - **Safari su Mac compatibile:** **File → Aggiungi al Dock**.
 - Nei browser senza installazione nativa l’app resta utilizzabile da una normale scheda.
@@ -23,19 +23,21 @@ La disponibilità della richiesta e l’aspetto dell’installazione dipendono d
 
 ## Uso
 
-La home contiene **Nuova scheda**, **Importa JSON** e **Installa app**. La compilazione presenta `Excavation site`, `Area`, `Stratigraphic Unit`, `Room`, tabella **Fragments**, osservazioni e Sketch. Su desktop i quattro campi sono in colonna a sinistra e la tabella è subito sotto; a destra si trovano Fabric and remarks e Sketch. Su mobile le due colonne si dispongono in sequenza. Una nuova scheda presenta una sola riga vuota; **Aggiungi riga** aggiunge le successive. I conteggi richiedono interi non negativi: gli zeri inseriti sono valori effettivi e vengono stampati. Una riga viene esclusa dal PDF solo se tutte le sue celle sono vuote.
+La home contiene **New form**, **Import JSON** e **Install app**. La compilazione presenta `Excavation site`, `Area`, `Stratigraphic unit`, `Room`, tabella **Fragments**, osservazioni e Sketch. Su desktop i quattro campi sono in colonna a sinistra e la tabella è subito sotto; a destra si trovano Fabric and remarks e Sketch. Su mobile le due colonne si dispongono in sequenza. Una nuova scheda presenta una sola riga vuota; **Add row** aggiunge le successive. **Remove row** rimuove l’ultima riga, conservando sempre una riga iniziale; se contiene dati chiede conferma. Le colonne desktop hanno la stessa larghezza e i riquadri Sketch e Fragments terminano alla stessa altezza. I conteggi richiedono interi non negativi: gli zeri inseriti sono valori effettivi e vengono stampati. Una riga viene esclusa dal PDF solo se tutte le sue celle sono vuote.
 
-**Fabric and remarks** ha la stessa dimensione e lo stesso peso del titolo Fragments, cresce con il testo e mostra `type here` come guida. Tocca il box **Sketch**, con testo `tap to draw`, per aprire l’editor su tutto lo spazio disponibile della finestra. Il foglio bianco mantiene proporzioni 4:3 ed è separato dal contenitore con bordo, ombra e margine su tutti i lati.
+**Fabric and remarks** ha la stessa dimensione e lo stesso peso del titolo Fragments, cresce con il testo e mostra `Type here...` come guida. Tocca il box **Sketch**, con testo `tap to draw`, per aprire l’editor su tutto lo spazio disponibile della finestra. Il foglio bianco mantiene proporzioni 4:3 ed è separato dal contenitore con bordo, ombra e margine su tutti i lati.
 
-Tutti i comandi sono sotto al foglio: **Penna**, **Gomma**, **Sposta foglio**, **Annulla tratto**, **Ripeti tratto**, **Pulisci sketch**, spessore penna, **Riduci**, **Ingrandisci**, **Adatta al contenitore** e **Salva sketch**. Il puntatore sul foglio è una matita in modalità Penna e una gomma in modalità Gomma, nei dispositivi che mostrano un cursore. I pulsanti restano solo testuali.
+I pulsanti compatti **Save** e **Back** sono in alto a destra, in questo ordine; entrambi salvano lo sketch e tornano alla scheda di compilazione senza cancellare i dati. Sotto al foglio ci sono due righe allineate: prima **Pan**, **Zoom in**, percentuale, **Zoom out**, **Fit to view**; poi **Pen**, **Eraser**, **Undo**, **Redo**, **Clear sketch** e **Pen thickness**. Su schermi stretti le due righe scorrono insieme orizzontalmente, senza cambiare l’allineamento delle colonne. Tutti i pulsanti dell’editor hanno le stesse dimensioni, con area touch maggiore nei dispositivi touch.
 
-Lo zoom va da 100% (foglio adattato con margine) a 600%. Due dita permettono zoom e spostamento; su desktop puoi usare i pulsanti oppure Ctrl/Command e rotella per lo zoom, la rotella per spostare il foglio ingrandito, o **Sposta foglio** per trascinarlo. **Adatta al contenitore** ripristina la vista iniziale. Zoom e spostamento non cambiano dimensioni, proporzioni o coordinate del disegno esportato. Sono ignorati i contatti touch mentre la penna sta tracciando, per ridurre i segni del palmo; il comportamento dipende anche dal driver dello stilo.
+Il cursore è una matita in modalità Pen e una gomma in modalità Eraser, anche durante il trascinamento, sui dispositivi che mostrano un cursore. I pulsanti restano solo testuali.
 
-**Salva sketch** torna alla scheda; riaprendo il box puoi continuare a disegnare. Anche Escape/Indietro sul dialogo salva lo sketch corrente. **Pulisci sketch** chiede conferma; la cancellazione completa non è annullabile. Il PDF include il disegno salvato, senza strumenti e con l’impaginazione della versione 1.1.
+Lo zoom va da 100% (foglio adattato con margine) a 600%. Due dita permettono zoom e spostamento; su desktop puoi usare i pulsanti oppure Ctrl/Command e rotella per lo zoom, la rotella per spostare il foglio ingrandito, o **Pan** per trascinarlo. **Fit to view** ripristina la vista iniziale. Zoom e spostamento non cambiano dimensioni, proporzioni o coordinate del disegno esportato. Sono ignorati i contatti touch mentre la penna sta tracciando, per ridurre i segni del palmo; il comportamento dipende anche dal driver dello stilo.
 
-**Reset scheda**, in basso a sinistra, apre **Vuoi resettare la scheda?** con **Sì / No**. Sì cancella tutti i campi e lo sketch e torna alla home; No chiude il box.
+**Save** torna alla scheda; riaprendo il box puoi continuare a disegnare. Anche Escape/Indietro sul dialogo salva lo sketch corrente. **Clear sketch** chiede conferma; la cancellazione completa non è annullabile. Il PDF include il disegno salvato, senza strumenti con l’impaginazione tradizionale della scheda e le modifiche di stampa della versione 1.3.
 
-**Salva PDF ed esporta JSON** è l’unico pulsante di esportazione: prepara entrambi i file dalla stessa copia dei dati e con lo stesso nome base. I due download vengono avviati automaticamente. Sotto al pulsante restano i collegamenti **PDF** e **JSON** per recuperarli individualmente, anche se il browser limita i download multipli. Non viene creato uno ZIP. Il JSON è la copia modificabile da conservare per riprendere il lavoro; il PDF è la copia per la stampa.
+**Reset form**, in basso a sinistra, apre **Reset this form?** con **Yes / No**. Sì cancella tutti i campi e lo sketch e torna alla home; No chiude il box.
+
+**Save PDF and JSON** è l’unico pulsante di esportazione: prepara entrambi i file dalla stessa copia dei dati e con lo stesso nome base. I due download vengono avviati automaticamente. Sotto al pulsante restano i collegamenti **PDF** e **JSON** per recuperarli individualmente, anche se il browser limita i download multipli. Non viene creato uno ZIP. Il JSON è la copia modificabile da conservare per riprendere il lavoro; il PDF è la copia per la stampa.
 
 Non sono presenti salvataggi locali automatici o un archivio del browser. Esporta i file prima di chiudere: il browser può mostrare un avviso in caso di modifiche non esportate, ma sui dispositivi mobili l’avviso non è garantito.
 
@@ -108,13 +110,24 @@ Dopo la pubblicazione apri il sito online, attendi qualche secondo per scaricare
 
 - Nuovo layout: dati di scavo e Fragments a sinistra; Fabric and remarks e Sketch a destra.
 - Una sola riga iniziale, titoli uniformati, etichetta Stratigraphic Unit per esteso.
-- Testi guida `type here` e `tap to draw`.
+- Testi guida `Type here...` e `tap to draw`.
 - Unico pulsante per esportare PDF e JSON con lo stesso nome base.
 - Editor Sketch con comandi inferiori, modalità Penna/Gomma/Sposta foglio, cursori dedicati, margine intorno al foglio, zoom e gesto a due dita.
 - Renderer PDF identico alla versione 1.1; lo schema JSON rimane compatibile.
 
+## Novità v1.3
+
+- Interfaccia e messaggi applicativi in inglese; New form, Import JSON, Install app, Reset form e Save PDF and JSON.
+- Excavation site senza due punti nell’interfaccia, Stratigraphic unit con la u minuscola e guida Type here...
+- Add row e Remove row affiancati; conferma prima di rimuovere una riga compilata.
+- Colonne desktop di pari larghezza e allineamento del bordo inferiore di Sketch e Fragments.
+- Save e Back in alto a destra, con salvataggio dello sketch e ritorno alla compilazione.
+- Due righe di comandi compatti con pulsanti della stessa dimensione. Navigazione sopra, disegno sotto; Zoom in a sinistra della percentuale e Zoom out a destra.
+- Cursore Pen/Eraser mantenuto anche sul contenitore che riceve la cattura del puntatore durante il trascinamento.
+- PDF: etichette Excavation site:, Area:, Stratigraphic unit: e Room: in grassetto compresi i due punti; valori normali; numeri centrati nelle celle in entrambe le direzioni; pagine nel formato 1/n in basso a destra.
+
 ## Verifiche di questa consegna
 
-Test automatici del formato dati, flussi dei pulsanti in ambiente DOM simulato, installazione simulata, importazione precedente, reset Sì/No, esportazione con libreria PDF e font reali, conservazione dei tratti dopo annulla/ripeti, zoom e spostamento, margini del foglio e gesto a due dita senza segni accidentali. Verificata la cache offline comprese le nuove risorse dei puntatori. Il file del renderer PDF è stato confrontato con la versione precedente ed è invariato.
+27 test automatici superati: flussi in DOM simulato, export con libreria e font PDF reali, formati e validazione dati, remove row, Back, stili del cursore sul contenitore di cattura, ordine e dimensioni dei comandi, zoom, tratti e cache offline. Verificati anche grassetti, allineamento dei numeri e conteggio i/n nelle chiamate del renderer PDF; generati e ispezionati PDF di una e quattro pagine.
 
-L’ambiente DOM di test non sostituisce il browser reale: restano da controllare sul dispositivo la resa grafica, la richiesta nativa di installazione, i gesti touch e il disegno con lo stilo.
+Il collaudo DOM non sostituisce il browser reale: resa grafica su dispositivo, installazione nativa e comportamento dei driver touch/stilo restano da provare sul dispositivo.

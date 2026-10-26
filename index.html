@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -9,30 +9,30 @@
     <meta name="theme-color" content="#385849" />
     <meta
       name="description"
-      content="Scheda ceramica di scavo: conteggi, osservazioni e schizzi, anche offline."
+      content="Ceramic field recording: counts, notes and sketches, also offline."
     />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon-192.png" />
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Ceramic – Summary form</title>
-    <link rel="stylesheet" href="./styles.css?v=1.2.0" />
-    <script defer src="./pwa-install.js?v=1.2.0"></script>
-    <script defer src="./bootstrap.js?v=1.2.0"></script>
-    <script defer src="./app.bundle.js?v=1.2.0"></script>
+    <link rel="stylesheet" href="./styles.css?v=1.3.0" />
+    <script defer src="./pwa-install.js?v=1.3.0"></script>
+    <script defer src="./bootstrap.js?v=1.3.0"></script>
+    <script defer src="./app.bundle.js?v=1.3.0"></script>
   </head>
   <body>
     <main id="home" class="home">
-      <button id="install" class="install secondary">Installa app</button>
+      <button id="install" class="install secondary">Install app</button>
       <div class="welcome">
         <div class="home-branding">
           <h1><span id="home-title">Ceramic</span></h1>
           <p><span id="home-subtitle">Summary form</span></p>
         </div>
         <div class="home-actions">
-          <button id="new" type="button" disabled>Nuova scheda</button
+          <button id="new" type="button" disabled>New form</button
           ><button id="import" type="button" class="secondary" disabled>
-            Importa JSON
+            Import JSON
           </button>
         </div>
         <p id="home-status" class="home-status" role="status" hidden></p>
@@ -45,16 +45,16 @@
       <form id="record" autocomplete="off">
         <div class="columns">
           <div class="left-column">
-            <section class="card metadata" aria-label="Dati di scavo">
+            <section class="card metadata" aria-label="Excavation details">
               <label
-                >Excavation site:<input
+                >Excavation site<input
                   id="excavationSite"
                   name="excavationSite"
                   maxlength="300"
               /></label>
               <label>Area<input id="area" name="area" maxlength="300" /></label>
               <label
-                >Stratigraphic Unit<input
+                >Stratigraphic unit<input
                   id="stratUnit"
                   name="stratUnit"
                   maxlength="300"
@@ -82,9 +82,13 @@
                 </thead>
                 <tbody id="rows"></tbody>
               </table>
-              <button type="button" id="add-row" class="secondary add-row">
-                Aggiungi riga
-              </button>
+              <div class="row-actions">
+                <button type="button" id="add-row" class="secondary">
+                  Add row</button
+                ><button type="button" id="remove-row" class="secondary">
+                  Remove row
+                </button>
+              </div>
             </section>
           </div>
           <div class="right-column">
@@ -98,49 +102,47 @@
                 id="remarks"
                 name="remarks"
                 rows="4"
-                placeholder="type here"
+                placeholder="Type here..."
               ></textarea>
             </section>
             <section class="card sketch-card">
               <h2>Sketch</h2>
               <button type="button" id="open-sketch" class="sketch-box">
-                <img id="sketch-preview" alt="Sketch salvato" hidden /><span
+                <img id="sketch-preview" alt="Saved sketch" hidden /><span
                   id="sketch-placeholder"
                   >tap to draw</span
                 >
               </button>
-              <p id="sketch-hint" class="hint" hidden>Tocca per modificare</p>
+              <p id="sketch-hint" class="hint" hidden>Tap to edit</p>
             </section>
           </div>
         </div>
         <footer class="actions">
           <button type="button" id="reset-sheet" class="secondary reset">
-            Reset scheda
+            Reset form
           </button>
-          <button type="button" id="export-files">
-            Salva PDF ed esporta JSON
-          </button>
+          <button type="button" id="export-files">Save PDF and JSON</button>
         </footer>
         <p id="export-links" class="export-links" hidden>
-          File pronti: <a id="download-pdf">PDF</a> ·
+          Files ready: <a id="download-pdf">PDF</a> ·
           <a id="download-json">JSON</a>
         </p>
       </form>
     </main>
     <input type="file" id="json-file" accept=".json,application/json" hidden />
     <dialog id="reset-dialog" class="confirm">
-      <h2>Vuoi resettare la scheda?</h2>
-      <p>Tutti i campi e lo sketch saranno cancellati.</p>
+      <h2>Reset this form?</h2>
+      <p>All fields and the sketch will be cleared.</p>
       <div class="dialog-actions">
         <button id="reset-no" class="secondary" autofocus>No</button
-        ><button id="reset-yes">Sì</button>
+        ><button id="reset-yes">Yes</button>
       </div>
     </dialog>
     <dialog id="install-dialog" class="confirm">
-      <h2>Installa app</h2>
+      <h2>Install app</h2>
       <p id="install-help"></p>
       <div class="dialog-actions">
-        <button id="install-close">Chiudi</button>
+        <button id="install-close">Close</button>
       </div>
     </dialog>
     <dialog
@@ -148,57 +150,74 @@
       class="sketch-editor"
       aria-labelledby="sketch-title"
     >
-      <header><h2 id="sketch-title">Sketch</h2></header>
+      <header>
+        <h2 id="sketch-title">Sketch</h2>
+        <div class="sketch-exit">
+          <button id="save-sketch">Save</button
+          ><button id="back-sketch" class="secondary">Back</button>
+        </div>
+      </header>
       <div class="canvas-area" id="sketch-viewport" data-tool="pen">
         <canvas
           id="canvas"
-          aria-label="Foglio Sketch: disegna con penna, dito o mouse"
+          aria-label="Sketch sheet: draw with a pen, finger or mouse"
         ></canvas>
       </div>
-      <div class="sketch-dock">
-        <div class="sketch-tools" role="toolbar" aria-label="Strumenti Sketch">
-          <button id="pen" class="secondary" aria-pressed="true">Penna</button>
-          <button id="eraser" class="secondary" aria-pressed="false">
-            Gomma
-          </button>
-          <button id="pan" class="secondary" aria-pressed="false">
-            Sposta foglio
-          </button>
-          <button id="undo" class="secondary">Annulla tratto</button>
-          <button id="redo" class="secondary">Ripeti tratto</button>
-          <button id="clear" class="secondary">Pulisci sketch</button>
-        </div>
-        <div class="sketch-settings">
-          <div class="pen-tools">
-            <label for="pen-size">Spessore penna</label
-            ><input
-              id="pen-size"
-              type="range"
-              min="1"
-              max="10"
-              value="2"
-            /><output id="pen-value" for="pen-size">2</output>
+      <div
+        class="sketch-dock"
+        tabindex="0"
+        aria-label="Sketch tools; scroll horizontally for more controls"
+      >
+        <div class="toolbar-grid">
+          <div
+            class="navigation-row"
+            role="toolbar"
+            aria-label="Navigation tools"
+          >
+            <button id="pan" class="secondary" aria-pressed="false">Pan</button>
+            <button id="zoom-in" class="secondary">Zoom in</button>
+            <output id="zoom-level" aria-live="polite">100%</output>
+            <button id="zoom-out" class="secondary">Zoom out</button>
+            <button id="fit-sketch" class="secondary">Fit to view</button>
           </div>
-          <div class="zoom-tools" role="group" aria-label="Zoom del foglio">
-            <button id="zoom-out" class="secondary">Riduci</button
-            ><output id="zoom-level" aria-live="polite">100%</output
-            ><button id="zoom-in" class="secondary">Ingrandisci</button
-            ><button id="fit-sketch" class="secondary">
-              Adatta al contenitore
+          <div class="drawing-row" role="toolbar" aria-label="Drawing tools">
+            <button id="pen" class="secondary" aria-pressed="true">Pen</button>
+            <button id="eraser" class="secondary" aria-pressed="false">
+              Eraser
             </button>
+            <button id="undo" class="secondary">Undo</button>
+            <button id="redo" class="secondary">Redo</button>
+            <button id="clear" class="secondary">Clear sketch</button>
+            <div class="pen-tools">
+              <label for="pen-size">Pen thickness</label
+              ><input
+                id="pen-size"
+                type="range"
+                min="1"
+                max="10"
+                value="2"
+              /><output id="pen-value" for="pen-size">2</output>
+            </div>
           </div>
-          <button id="save-sketch">Salva sketch</button>
         </div>
       </div>
     </dialog>
     <dialog id="clear-dialog" class="confirm">
-      <h2>Cancellare tutto lo sketch?</h2>
+      <h2>Clear the entire sketch?</h2>
       <div class="dialog-actions">
         <button id="clear-no" class="secondary" autofocus>No</button
-        ><button id="clear-yes">Sì</button>
+        ><button id="clear-yes">Yes</button>
       </div>
     </dialog>
-    <noscript>Attiva JavaScript nel browser per compilare le schede.</noscript>
+    <dialog id="remove-dialog" class="confirm">
+      <h2>Remove the last row?</h2>
+      <p>This row contains data. Its contents will be deleted.</p>
+      <div class="dialog-actions">
+        <button id="remove-no" class="secondary" autofocus>No</button
+        ><button id="remove-yes">Yes</button>
+      </div>
+    </dialog>
+    <noscript>Enable JavaScript in your browser to fill in forms.</noscript>
     <div
       id="status"
       role="status"
