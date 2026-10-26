@@ -13,6 +13,8 @@ const $ = (selector) => document.querySelector(selector);
 let sketch = emptySketch(),
   dirty = false,
   busy = false;
+let revision = 0;
+let exportUrls = [];
 let createdAt = new Date().toISOString();
 function notify(message) {
   $("#status").textContent = message;
@@ -88,7 +90,9 @@ async function preview() {
 function reset() {
   HTMLFormElement.prototype.reset.call($("#record"));
   $("#rows").replaceChildren();
-  for (let i = 0; i < 4; i++) row();
+  row();
+  clearExportLinks();
+  revision++;
   sketch = emptySketch();
   createdAt = new Date().toISOString();
   dirty = false;
@@ -97,6 +101,7 @@ function reset() {
 const editor = new SketchEditor($("#sketch-dialog"), (value) => {
   sketch = value;
   dirty = true;
+  revision++;
   preview().catch((error) => notify(error.message));
 });
 $("#open-sketch").onclick = () =>
@@ -106,13 +111,17 @@ $("#new").onclick = () => {
   showForm();
 };
 $("#record").onsubmit = (event) => event.preventDefault();
-$("#record").addEventListener("input", () => (dirty = true));
+$("#record").addEventListener("input", () => {
+  dirty = true;
+  revision++;
+});
 $("#remarks").addEventListener("input", grow);
 $("#add-row").onclick = () => {
   if ($("#rows").children.length >= 5000)
     return notify("Limite di 5.000 righe raggiunto.");
   row();
   dirty = true;
+  revision++;
   $("#rows").lastElementChild.querySelector("input").focus();
 };
 $("#reset-sheet").onclick = () => $("#reset-dialog").showModal();
@@ -126,28 +135,63 @@ $("#reset-yes").onclick = () => {
   document.dispatchEvent(new Event("ceramic:home"));
   $("#new").focus();
 };
-function download(blob, name) {
-  const url = URL.createObjectURL(blob),
-    a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+function clearExportLinks() {
+  for (const url of exportUrls) URL.revokeObjectURL(url);
+  exportUrls = [];
+  $("#export-links").hidden = true;
+  for (const selector of ["#download-pdf", "#download-json"])
+    $(selector).removeAttribute("href");
 }
-$("#json").onclick = async () => {
+// Both files use one immutable snapshot and exactly the same filename stem.
+$("#export-files").onclick = async () => {
+  if (busy) return;
+  busy = true;
+  const button = $("#export-files");
+  button.disabled = true;
+  $("#reset-sheet").disabled = true;
+  button.textContent = "Preparazione…";
+  const snapshotRevision = revision;
   try {
     const record = collect();
+    const stem = filename(record.header);
     record.sketchPng = await sketchPng(record.sketch);
-    download(
-      new Blob([JSON.stringify(record, null, 2)], { type: "application/json" }),
-      `${filename(record.header)}.json`,
+    const doc = await createPdf(record, record.sketchPng);
+    const files = [
+      {
+        selector: "#download-pdf",
+        blob: doc.output("blob"),
+        name: `${stem}.pdf`,
+      },
+      {
+        selector: "#download-json",
+        blob: new Blob([JSON.stringify(record, null, 2)], {
+          type: "application/json",
+        }),
+        name: `${stem}.json`,
+      },
+    ];
+    clearExportLinks();
+    for (const file of files) {
+      const link = $(file.selector);
+      link.href = URL.createObjectURL(file.blob);
+      exportUrls.push(link.href);
+      link.download = file.name;
+    }
+    // Retain real links: if a browser limits automatic multiple downloads,
+    // each generated file remains accessible with an explicit tap.
+    $("#export-links").hidden = false;
+    for (const file of files) $(file.selector).click();
+    if (revision === snapshotRevision) dirty = false;
+    notify(
+      "PDF e JSON pronti. Puoi riaprirli anche dai collegamenti sotto il pulsante.",
     );
-    dirty = false;
-    notify("JSON esportato.");
   } catch (error) {
-    notify(error.message);
+    notify(`Esportazione non riuscita: ${error.message}`);
+  } finally {
+    busy = false;
+    button.disabled = false;
+    $("#reset-sheet").disabled = false;
+    button.textContent = "Salva PDF ed esporta JSON";
   }
 };
 $("#import").onclick = () => $("#json-file").click();
@@ -178,24 +222,6 @@ $("#json-file").onchange = async (event) => {
     notify(`Importazione non riuscita: ${error.message}`);
   } finally {
     event.target.value = "";
-  }
-};
-$("#pdf").onclick = async () => {
-  if (busy) return;
-  busy = true;
-  $("#pdf").disabled = true;
-  $("#pdf").textContent = "Preparazione…";
-  try {
-    const record = collect();
-    const doc = await createPdf(record, await sketchPng(record.sketch));
-    download(doc.output("blob"), `${filename(record.header)}.pdf`);
-    notify("PDF esportato.");
-  } catch (error) {
-    notify(`PDF non creato: ${error.message}`);
-  } finally {
-    busy = false;
-    $("#pdf").disabled = false;
-    $("#pdf").textContent = "Esporta PDF";
   }
 };
 window.addEventListener("beforeunload", (event) => {
