@@ -5,6 +5,7 @@ import {
   emptySketch,
   filename,
   parseRecord,
+  clone,
 } from "./data.js";
 import { SketchEditor, sketchPng } from "./sketch.js";
 import { createPdf } from "./pdf.js";
@@ -65,7 +66,7 @@ function collect() {
       ),
     ),
     remarks: $("#remarks").value,
-    sketch: structuredClone(sketch),
+    sketch: clone(sketch),
   };
 }
 function showForm() {
@@ -85,7 +86,7 @@ async function preview() {
   return png;
 }
 function reset() {
-  $("#record").reset();
+  HTMLFormElement.prototype.reset.call($("#record"));
   $("#rows").replaceChildren();
   for (let i = 0; i < 4; i++) row();
   sketch = emptySketch();
@@ -114,7 +115,7 @@ $("#add-row").onclick = () => {
   dirty = true;
   $("#rows").lastElementChild.querySelector("input").focus();
 };
-$("#reset").onclick = () => $("#reset-dialog").showModal();
+$("#reset-sheet").onclick = () => $("#reset-dialog").showModal();
 $("#reset-no").onclick = () => $("#reset-dialog").close();
 $("#reset-yes").onclick = () => {
   reset();
@@ -122,6 +123,7 @@ $("#reset-yes").onclick = () => {
   $("#form-view").hidden = true;
   $("#home").hidden = false;
   window.scrollTo(0, 0);
+  document.dispatchEvent(new Event("ceramic:home"));
   $("#new").focus();
 };
 function download(blob, name) {
@@ -202,40 +204,7 @@ window.addEventListener("beforeunload", (event) => {
     event.returnValue = "";
   }
 });
-let installPrompt;
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  installPrompt = event;
-});
-window.addEventListener("appinstalled", () => {
-  installPrompt = null;
-  $("#install").hidden = true;
-});
-if (matchMedia("(display-mode: standalone)").matches || navigator.standalone)
-  $("#install").hidden = true;
-$("#install").onclick = async () => {
-  if (installPrompt) {
-    const prompt = installPrompt;
-    installPrompt = null;
-    await prompt.prompt();
-    await prompt.userChoice;
-    return;
-  }
-  const ios =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  $("#install-help").textContent = ios
-    ? "Apri il menu Condividi del browser e scegli “Aggiungi alla schermata Home”. Se la voce non compare, apri questa pagina in Safari."
-    : "In Chrome o Edge apri il menu del browser e cerca “Installa Ceramic” oppure “Installa pagina come app”. Su Safari per Mac usa File → Aggiungi al Dock. Se il browser non offre l’installazione, puoi utilizzare l’app da questa pagina. Alla prima visita attendi il caricamento completo.";
-  $("#install-dialog").showModal();
-};
-$("#install-close").onclick = () => $("#install-dialog").close();
-if ("serviceWorker" in navigator)
-  window.addEventListener("load", () =>
-    navigator.serviceWorker
-      .register("./sw.js")
-      .catch(() =>
-        notify("Offline non ancora disponibile: riapri l’app online."),
-      ),
-  );
 reset();
+$("#new").disabled = false;
+$("#import").disabled = false;
+window.CeramicAppReady = true;

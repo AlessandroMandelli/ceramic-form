@@ -1,9 +1,31 @@
 import { COLUMNS, filledRows } from "./data.js";
 let fonts;
+let engine;
+function loadEngine() {
+  if (window.jspdf) return Promise.resolve();
+  if (!engine)
+    engine = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "./vendor/jspdf.umd.min.js";
+      script.onload = () =>
+        window.jspdf
+          ? resolve()
+          : reject(Error("Motore PDF non inizializzato."));
+      script.onerror = () => {
+        script.remove();
+        reject(Error("Motore PDF non disponibile. Riapri l’app online."));
+      };
+      document.head.append(script);
+    }).catch((error) => {
+      engine = null;
+      throw error;
+    });
+  return engine;
+}
 async function fontData() {
   if (!fonts)
     fonts = Promise.all(
-      ["DejaVuSans", "DejaVuSans-Bold"].map(async (name) => {
+      ["LiberationSans-Regular", "LiberationSans-Bold"].map(async (name) => {
         const response = await fetch(`./assets/${name}.ttf`);
         if (!response.ok)
           throw Error(
@@ -23,8 +45,7 @@ async function fontData() {
 }
 /** Replace this renderer when the final PDF template is supplied. All units are mm. */
 export async function createPdf(record, png) {
-  if (!window.jspdf)
-    throw Error("Motore PDF non disponibile. Ricarica l’app online.");
+  await loadEngine();
   const doc = new window.jspdf.jsPDF({
     unit: "mm",
     format: "a4",
@@ -32,9 +53,9 @@ export async function createPdf(record, png) {
   });
   const data = await fontData();
   ["normal", "bold"].forEach((style, index) => {
-    const name = `DejaVu-${style}.ttf`;
+    const name = `Liberation-${style}.ttf`;
     doc.addFileToVFS(name, data[index]);
-    doc.addFont(name, "DejaVu", style);
+    doc.addFont(name, "Liberation", style);
   });
   const left = 10,
     right = 200,
@@ -43,12 +64,12 @@ export async function createPdf(record, png) {
     widths = [30, 13, 16, 12, 13];
   const line = (x, y, x2, y2) => doc.line(x, y, x2, y2);
   const text = (s, x, y, bold = false, size = 9) => {
-    doc.setFont("DejaVu", bold ? "bold" : "normal");
+    doc.setFont("Liberation", bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.text(s, x, y);
   };
   const wrap = (s, w, size = 9) => {
-    doc.setFont("DejaVu", "normal");
+    doc.setFont("Liberation", "normal");
     doc.setFontSize(size);
     return doc.splitTextToSize(String(s), w);
   };

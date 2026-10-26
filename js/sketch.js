@@ -1,4 +1,4 @@
-import { emptySketch } from "./data.js";
+import { emptySketch, clone } from "./data.js";
 const WIDTH = 1200,
   HEIGHT = 900;
 /** Fixed logical sheet, normalized points: resizing never changes the drawing. */
@@ -54,12 +54,14 @@ export class SketchEditor {
       event.preventDefault();
       this.save();
     });
-    new ResizeObserver(() => this.fit()).observe(
-      document.querySelector(".canvas-area"),
-    );
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(() => this.fit()).observe(
+        document.querySelector(".canvas-area"),
+      );
+    } else window.addEventListener("resize", () => this.fit());
   }
   async open(value) {
-    this.value = structuredClone(value);
+    this.value = clone(value);
     this.redoStack = [];
     this.active = null;
     this.baseImage = await loadImage(this.value.base);
@@ -120,7 +122,7 @@ export class SketchEditor {
   }
   save() {
     this.finish();
-    this.onSave(structuredClone(this.value));
+    this.onSave(clone(this.value));
     this.dialog.close();
   }
 }

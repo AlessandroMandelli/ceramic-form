@@ -108,3 +108,6 @@ export function parseRecord(data) {
     sketch,
   };
 }
+
+/** Documents contain only JSON values; usable also on older Chromium tablets. */
+export const clone = (value) => JSON.parse(JSON.stringify(value));
