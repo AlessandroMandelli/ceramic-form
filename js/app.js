@@ -9,12 +9,12 @@ import {
 } from "./data.js";
 import { SketchEditor, sketchPng } from "./sketch.js";
 import { createPdf } from "./pdf.js";
+import { needsArchive, createArchive } from "./export-archive.js";
 const $ = (selector) => document.querySelector(selector);
 let sketch = emptySketch(),
   dirty = false,
   busy = false;
 let revision = 0;
-let exportUrls = [];
 let createdAt = new Date().toISOString();
 function notify(message) {
   $("#status").textContent = message;
@@ -115,7 +115,6 @@ function reset() {
   HTMLFormElement.prototype.reset.call($("#record"));
   $("#rows").replaceChildren();
   row();
-  clearExportLinks();
   revision++;
   sketch = emptySketch();
   createdAt = new Date().toISOString();
@@ -159,12 +158,17 @@ $("#reset-yes").onclick = () => {
   document.dispatchEvent(new Event("ceramic:home"));
   $("#new").focus();
 };
-function clearExportLinks() {
-  for (const url of exportUrls) URL.revokeObjectURL(url);
-  exportUrls = [];
-  $("#export-links").hidden = true;
-  for (const selector of ["#download-pdf", "#download-json"])
-    $(selector).removeAttribute("href");
+function downloadFile(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // Give the browser time to read the file before releasing its object URL.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 // Both files use one immutable snapshot and exactly the same filename stem.
 $("#export-files").onclick = async () => {
@@ -183,33 +187,22 @@ $("#export-files").onclick = async () => {
     const doc = await createPdf(record);
     const files = [
       {
-        selector: "#download-pdf",
         blob: doc.output("blob"),
         name: `${stem}.pdf`,
       },
       {
-        selector: "#download-json",
         blob: new Blob([JSON.stringify(record, null, 2)], {
           type: "application/json",
         }),
         name: `${stem}.json`,
       },
     ];
-    clearExportLinks();
-    for (const file of files) {
-      const link = $(file.selector);
-      link.href = URL.createObjectURL(file.blob);
-      exportUrls.push(link.href);
-      link.download = file.name;
+    if (needsArchive()) {
+      downloadFile(await createArchive(files), `${stem}.zip`);
+    } else {
+      for (const file of files) downloadFile(file.blob, file.name);
     }
-    // Retain real links: if a browser limits automatic multiple downloads,
-    // each generated file remains accessible with an explicit tap.
-    $("#export-links").hidden = false;
-    for (const file of files) $(file.selector).click();
     if (revision === snapshotRevision) dirty = false;
-    notify(
-      "PDF and JSON are ready. You can also use the links below the button.",
-    );
   } catch (error) {
     notify(
       "Export failed. Please try again. If the problem persists, reopen the app online.",
