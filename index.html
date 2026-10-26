@@ -16,10 +16,10 @@
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Ceramic – Summary form</title>
-    <link rel="stylesheet" href="./styles.css?v=1.1.0" />
-    <script defer src="./pwa-install.js?v=1.1.0"></script>
-    <script defer src="./bootstrap.js?v=1.1.0"></script>
-    <script defer src="./app.bundle.js?v=1.1.0"></script>
+    <link rel="stylesheet" href="./styles.css?v=1.2.0" />
+    <script defer src="./pwa-install.js?v=1.2.0"></script>
+    <script defer src="./bootstrap.js?v=1.2.0"></script>
+    <script defer src="./app.bundle.js?v=1.2.0"></script>
   </head>
   <body>
     <main id="home" class="home">
@@ -43,61 +43,70 @@
         <h1>Ceramic <span>– Summary form</span></h1>
       </header>
       <form id="record" autocomplete="off">
-        <section class="card metadata" aria-label="Dati di scavo">
-          <label
-            >Excavation site:<input
-              id="excavationSite"
-              name="excavationSite"
-              maxlength="300"
-          /></label>
-          <label>Area<input id="area" name="area" maxlength="300" /></label>
-          <label
-            >Strat. Unit<input id="stratUnit" name="stratUnit" maxlength="300"
-          /></label>
-          <label>Room<input id="room" name="room" maxlength="300" /></label>
-        </section>
         <div class="columns">
-          <section class="card fragments">
-            <h2>Fragments</h2>
-            <table>
-              <colgroup>
-                <col class="type-col" />
-                <col />
-                <col />
-                <col />
-                <col />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Type/Form</th>
-                  <th scope="col">Rims</th>
-                  <th scope="col">Handles</th>
-                  <th scope="col">Feet</th>
-                  <th scope="col">Bodies</th>
-                </tr>
-              </thead>
-              <tbody id="rows"></tbody>
-            </table>
-            <button type="button" id="add-row" class="secondary add-row">
-              Aggiungi riga
-            </button>
-          </section>
+          <div class="left-column">
+            <section class="card metadata" aria-label="Dati di scavo">
+              <label
+                >Excavation site:<input
+                  id="excavationSite"
+                  name="excavationSite"
+                  maxlength="300"
+              /></label>
+              <label>Area<input id="area" name="area" maxlength="300" /></label>
+              <label
+                >Stratigraphic Unit<input
+                  id="stratUnit"
+                  name="stratUnit"
+                  maxlength="300"
+              /></label>
+              <label>Room<input id="room" name="room" maxlength="300" /></label>
+            </section>
+            <section class="card fragments">
+              <h2>Fragments</h2>
+              <table>
+                <colgroup>
+                  <col class="type-col" />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Type/Form</th>
+                    <th scope="col">Rims</th>
+                    <th scope="col">Handles</th>
+                    <th scope="col">Feet</th>
+                    <th scope="col">Bodies</th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+              <button type="button" id="add-row" class="secondary add-row">
+                Aggiungi riga
+              </button>
+            </section>
+          </div>
           <div class="right-column">
             <section class="card">
-              <h2><label for="remarks">Fabric and remarks</label></h2>
+              <h2>
+                <label class="section-label" for="remarks"
+                  >Fabric and remarks</label
+                >
+              </h2>
               <textarea
                 id="remarks"
                 name="remarks"
                 rows="4"
-                placeholder="Scrivi le tue osservazioni…"
+                placeholder="type here"
               ></textarea>
             </section>
             <section class="card sketch-card">
-              <h2>Schizzo</h2>
+              <h2>Sketch</h2>
               <button type="button" id="open-sketch" class="sketch-box">
-                <img id="sketch-preview" alt="Schizzo salvato" hidden /><span
+                <img id="sketch-preview" alt="Sketch salvato" hidden /><span
                   id="sketch-placeholder"
-                  >Tocca per disegnare</span
+                  >tap to draw</span
                 >
               </button>
               <p id="sketch-hint" class="hint" hidden>Tocca per modificare</p>
@@ -108,18 +117,20 @@
           <button type="button" id="reset-sheet" class="secondary reset">
             Reset scheda
           </button>
-          <div>
-            <button type="button" id="json" class="secondary">
-              Esporta JSON</button
-            ><button type="button" id="pdf">Esporta PDF</button>
-          </div>
+          <button type="button" id="export-files">
+            Salva PDF ed esporta JSON
+          </button>
         </footer>
+        <p id="export-links" class="export-links" hidden>
+          File pronti: <a id="download-pdf">PDF</a> ·
+          <a id="download-json">JSON</a>
+        </p>
       </form>
     </main>
     <input type="file" id="json-file" accept=".json,application/json" hidden />
     <dialog id="reset-dialog" class="confirm">
       <h2>Vuoi resettare la scheda?</h2>
-      <p>Tutti i campi e lo schizzo saranno cancellati.</p>
+      <p>Tutti i campi e lo sketch saranno cancellati.</p>
       <div class="dialog-actions">
         <button id="reset-no" class="secondary" autofocus>No</button
         ><button id="reset-yes">Sì</button>
@@ -137,34 +148,51 @@
       class="sketch-editor"
       aria-labelledby="sketch-title"
     >
-      <header>
-        <h2 id="sketch-title">Schizzo</h2>
-        <button id="save-sketch">Salva schizzo</button>
-      </header>
-      <div class="sketch-tools" role="toolbar" aria-label="Strumenti schizzo">
-        <button id="undo" class="secondary">Annulla tratto</button
-        ><button id="redo" class="secondary">Ripeti tratto</button
-        ><button id="eraser" class="secondary" aria-pressed="false">
-          Gomma</button
-        ><button id="clear" class="secondary">Pulisci schizzo</button>
-      </div>
-      <div class="canvas-area">
+      <header><h2 id="sketch-title">Sketch</h2></header>
+      <div class="canvas-area" id="sketch-viewport" data-tool="pen">
         <canvas
           id="canvas"
-          aria-label="Area per disegnare con penna, dito o mouse"
+          aria-label="Foglio Sketch: disegna con penna, dito o mouse"
         ></canvas>
       </div>
-      <div class="pen-tools">
-        <label for="pen-size">Spessore penna</label
-        ><input id="pen-size" type="range" min="1" max="10" value="2" /><output
-          id="pen-value"
-          for="pen-size"
-          >2</output
-        >
+      <div class="sketch-dock">
+        <div class="sketch-tools" role="toolbar" aria-label="Strumenti Sketch">
+          <button id="pen" class="secondary" aria-pressed="true">Penna</button>
+          <button id="eraser" class="secondary" aria-pressed="false">
+            Gomma
+          </button>
+          <button id="pan" class="secondary" aria-pressed="false">
+            Sposta foglio
+          </button>
+          <button id="undo" class="secondary">Annulla tratto</button>
+          <button id="redo" class="secondary">Ripeti tratto</button>
+          <button id="clear" class="secondary">Pulisci sketch</button>
+        </div>
+        <div class="sketch-settings">
+          <div class="pen-tools">
+            <label for="pen-size">Spessore penna</label
+            ><input
+              id="pen-size"
+              type="range"
+              min="1"
+              max="10"
+              value="2"
+            /><output id="pen-value" for="pen-size">2</output>
+          </div>
+          <div class="zoom-tools" role="group" aria-label="Zoom del foglio">
+            <button id="zoom-out" class="secondary">Riduci</button
+            ><output id="zoom-level" aria-live="polite">100%</output
+            ><button id="zoom-in" class="secondary">Ingrandisci</button
+            ><button id="fit-sketch" class="secondary">
+              Adatta al contenitore
+            </button>
+          </div>
+          <button id="save-sketch">Salva sketch</button>
+        </div>
       </div>
     </dialog>
     <dialog id="clear-dialog" class="confirm">
-      <h2>Cancellare tutto lo schizzo?</h2>
+      <h2>Cancellare tutto lo sketch?</h2>
       <div class="dialog-actions">
         <button id="clear-no" class="secondary" autofocus>No</button
         ><button id="clear-yes">Sì</button>

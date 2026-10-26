@@ -76,15 +76,85 @@
   }
   var clone = (value) => JSON.parse(JSON.stringify(value));
 
+  // js/sketch-view.js
+  var PAPER_WIDTH = 1200;
+  var PAPER_HEIGHT = 900;
+  var PAPER_MARGIN = 24;
+  var clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  var PaperView = class {
+    constructor() {
+      this.width = 0;
+      this.height = 0;
+      this.zoom = 1;
+      this.scale = 1;
+      this.x = 0;
+      this.y = 0;
+    }
+    resize(width, height) {
+      const oldScale = this.scale;
+      const centerX = (this.width / 2 - this.x) / oldScale;
+      const centerY = (this.height / 2 - this.y) / oldScale;
+      const wasReady = this.width > 0 && this.height > 0;
+      this.width = width;
+      this.height = height;
+      this.fitScale = Math.max(
+        1e-3,
+        Math.min(
+          Math.max(1, width - 2 * PAPER_MARGIN) / PAPER_WIDTH,
+          Math.max(1, height - 2 * PAPER_MARGIN) / PAPER_HEIGHT
+        )
+      );
+      this.scale = this.fitScale * this.zoom;
+      if (wasReady && this.zoom > 1) {
+        this.x = width / 2 - centerX * this.scale;
+        this.y = height / 2 - centerY * this.scale;
+      } else this.center();
+      this.constrain();
+    }
+    center() {
+      this.x = (this.width - PAPER_WIDTH * this.scale) / 2;
+      this.y = (this.height - PAPER_HEIGHT * this.scale) / 2;
+    }
+    fit() {
+      this.zoom = 1;
+      this.scale = this.fitScale || 1;
+      this.center();
+      this.constrain();
+    }
+    zoomAt(value, anchor = { x: this.width / 2, y: this.height / 2 }) {
+      const oldScale = this.scale;
+      this.zoom = clamp(value, 1, 6);
+      this.scale = (this.fitScale || 1) * this.zoom;
+      this.x = anchor.x - (anchor.x - this.x) * this.scale / oldScale;
+      this.y = anchor.y - (anchor.y - this.y) * this.scale / oldScale;
+      this.constrain();
+    }
+    pan(dx, dy) {
+      this.x += dx;
+      this.y += dy;
+      this.constrain();
+    }
+    constrain() {
+      const bound = (offset, viewport, paper) => paper <= viewport - 2 * PAPER_MARGIN ? (viewport - paper) / 2 : clamp(offset, viewport - PAPER_MARGIN - paper, PAPER_MARGIN);
+      this.x = bound(this.x, this.width, PAPER_WIDTH * this.scale);
+      this.y = bound(this.y, this.height, PAPER_HEIGHT * this.scale);
+    }
+    point(x, y) {
+      return [
+        (x - this.x) / (PAPER_WIDTH * this.scale),
+        (y - this.y) / (PAPER_HEIGHT * this.scale)
+      ];
+    }
+  };
+
   // js/sketch.js
-  var WIDTH = 1200;
-  var HEIGHT = 900;
   var SketchEditor = class {
     constructor(dialog, onSave) {
       this.dialog = dialog;
       this.canvas = document.querySelector("#canvas");
-      this.canvas.width = WIDTH;
-      this.canvas.height = HEIGHT;
+      this.area = document.querySelector("#sketch-viewport");
+      this.canvas.width = PAPER_WIDTH;
+      this.canvas.height = PAPER_HEIGHT;
       this.ctx = this.canvas.getContext("2d");
       this.value = emptySketch();
       this.redoStack = [];
@@ -92,10 +162,33 @@
       this.onSave = onSave;
       this.tool = "pen";
       this.active = null;
-      this.canvas.addEventListener("pointerdown", (event) => this.start(event));
-      this.canvas.addEventListener("pointermove", (event) => this.move(event));
+      this.pointers = /* @__PURE__ */ new Map();
+      this.view = new PaperView();
+      this.area.addEventListener("pointerdown", (event) => this.start(event));
+      this.area.addEventListener("pointermove", (event) => this.move(event));
       for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
-        this.canvas.addEventListener(name, () => this.finish());
+        this.area.addEventListener(name, (event) => this.end(event));
+      this.area.addEventListener(
+        "wheel",
+        (event) => {
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            this.view.zoomAt(
+              this.view.zoom * Math.exp(-event.deltaY * 5e-3),
+              this.position(event)
+            );
+            this.applyView();
+          } else if (this.view.zoom > 1) {
+            event.preventDefault();
+            this.view.pan(-event.deltaX, -event.deltaY);
+            this.applyView();
+          }
+        },
+        { passive: false }
+      );
+      document.querySelector("#pen").onclick = () => this.selectTool("pen");
+      document.querySelector("#eraser").onclick = () => this.selectTool("eraser");
+      document.querySelector("#pan").onclick = () => this.selectTool("pan");
       document.querySelector("#undo").onclick = () => {
         this.finish();
         if (this.value.strokes.length)
@@ -106,10 +199,6 @@
         this.finish();
         if (this.redoStack.length) this.value.strokes.push(this.redoStack.pop());
         this.render();
-      };
-      document.querySelector("#eraser").onclick = (event) => {
-        this.tool = this.tool === "pen" ? "eraser" : "pen";
-        event.currentTarget.setAttribute("aria-pressed", this.tool === "eraser");
       };
       document.querySelector("#clear").onclick = () => document.querySelector("#clear-dialog").showModal();
       document.querySelector("#clear-no").onclick = () => document.querySelector("#clear-dialog").close();
@@ -122,34 +211,63 @@
         document.querySelector("#clear-dialog").close();
       };
       document.querySelector("#pen-size").oninput = (event) => document.querySelector("#pen-value").value = event.target.value;
+      document.querySelector("#zoom-in").onclick = () => this.zoomBy(1.25);
+      document.querySelector("#zoom-out").onclick = () => this.zoomBy(1 / 1.25);
+      document.querySelector("#fit-sketch").onclick = () => {
+        this.view.fit();
+        this.applyView();
+      };
       document.querySelector("#save-sketch").onclick = () => this.save();
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
         this.save();
       });
-      if (typeof ResizeObserver !== "undefined") {
-        new ResizeObserver(() => this.fit()).observe(
-          document.querySelector(".canvas-area")
-        );
-      } else window.addEventListener("resize", () => this.fit());
+      if (typeof ResizeObserver !== "undefined")
+        new ResizeObserver(() => this.fit()).observe(this.area);
+      else window.addEventListener("resize", () => this.fit());
     }
     async open(value) {
       this.value = clone(value);
       this.redoStack = [];
-      this.active = null;
+      this.finish();
       this.baseImage = await loadImage(this.value.base);
+      this.view = new PaperView();
+      this.selectTool("pen");
       this.dialog.showModal();
       this.fit();
       this.render();
     }
     fit() {
-      const area = this.canvas.parentElement;
-      const scale = Math.min(
-        area.clientWidth / WIDTH,
-        area.clientHeight / HEIGHT
-      );
-      this.canvas.style.width = `${WIDTH * scale}px`;
-      this.canvas.style.height = `${HEIGHT * scale}px`;
+      if (!this.dialog.open || !this.area.clientWidth || !this.area.clientHeight)
+        return;
+      this.view.resize(this.area.clientWidth, this.area.clientHeight);
+      this.applyView();
+    }
+    applyView() {
+      const { x, y, scale, zoom } = this.view;
+      this.canvas.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      document.querySelector("#zoom-level").value = `${Math.round(zoom * 100)}%`;
+      document.querySelector("#zoom-out").disabled = zoom <= 1;
+      document.querySelector("#zoom-in").disabled = zoom >= 6;
+    }
+    zoomBy(factor) {
+      this.view.zoomAt(this.view.zoom * factor);
+      this.applyView();
+    }
+    selectTool(tool) {
+      this.finish();
+      this.tool = tool;
+      this.area.dataset.tool = tool;
+      for (const [id, value] of [
+        ["pen", "pen"],
+        ["eraser", "eraser"],
+        ["pan", "pan"]
+      ])
+        document.getElementById(id).setAttribute("aria-pressed", String(tool === value));
+    }
+    position(event) {
+      const rect = this.area.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
     }
     point(event) {
       const rect = this.canvas.getBoundingClientRect();
@@ -158,13 +276,58 @@
         Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
       ];
     }
+    touches() {
+      return [...this.pointers.values()].filter(
+        (pointer) => pointer.type === "touch"
+      );
+    }
+    pinch() {
+      const [a, b] = this.touches();
+      return {
+        distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      };
+    }
     start(event) {
-      if (this.active || event.pointerType === "mouse" && event.button !== 0)
+      var _a, _b, _c, _d, _e;
+      if (event.pointerType === "mouse" && event.button !== 0 && event.button !== 1)
         return;
+      if (event.pointerType === "pen" && ((_a = this.active) == null ? void 0 : _a.type) === "touch") {
+        if (this.value.strokes[this.value.strokes.length - 1] === this.active.stroke)
+          this.value.strokes.pop();
+        this.redoStack = this.active.redoBefore;
+        this.finish();
+        this.render();
+      }
+      if (((_b = this.active) == null ? void 0 : _b.type) === "pen" && event.pointerType === "touch") return;
       event.preventDefault();
-      this.canvas.setPointerCapture(event.pointerId);
+      (_d = (_c = this.area).setPointerCapture) == null ? void 0 : _d.call(_c, event.pointerId);
+      const position = this.position(event);
+      this.pointers.set(event.pointerId, {
+        ...position,
+        type: event.pointerType
+      });
+      if (this.touches().length >= 2) {
+        if (((_e = this.active) == null ? void 0 : _e.type) === "touch") {
+          if (this.value.strokes[this.value.strokes.length - 1] === this.active.stroke)
+            this.value.strokes.pop();
+          this.redoStack = this.active.redoBefore;
+          this.active = null;
+          this.render();
+        }
+        this.pan = null;
+        this.gesture = this.pinch();
+        return;
+      }
+      if (this.active) return;
+      if (this.tool === "pan" || event.button === 1 || event.target !== this.canvas) {
+        this.pan = { id: event.pointerId, position };
+        return;
+      }
       this.active = {
         id: event.pointerId,
+        type: event.pointerType,
+        redoBefore: [...this.redoStack],
         stroke: {
           tool: this.tool,
           width: Number(document.querySelector("#pen-size").value) * (this.tool === "eraser" ? 6 : 1),
@@ -176,16 +339,62 @@
       this.render();
     }
     move(event) {
-      var _a;
-      if (!this.active || this.active.id !== event.pointerId) return;
+      var _a, _b, _c;
+      if (!this.pointers.has(event.pointerId)) return;
       event.preventDefault();
-      const events = (_a = event.getCoalescedEvents) == null ? void 0 : _a.call(event);
+      const position = this.position(event);
+      this.pointers.set(event.pointerId, {
+        ...position,
+        type: event.pointerType
+      });
+      if (this.gesture && this.touches().length >= 2) {
+        const next = this.pinch();
+        this.view.zoomAt(
+          this.view.zoom * next.distance / this.gesture.distance,
+          this.gesture.center
+        );
+        this.view.pan(
+          next.center.x - this.gesture.center.x,
+          next.center.y - this.gesture.center.y
+        );
+        this.gesture = next;
+        this.applyView();
+        return;
+      }
+      if (((_a = this.pan) == null ? void 0 : _a.id) === event.pointerId) {
+        this.view.pan(
+          position.x - this.pan.position.x,
+          position.y - this.pan.position.y
+        );
+        this.pan.position = position;
+        this.applyView();
+        return;
+      }
+      if (((_b = this.active) == null ? void 0 : _b.id) !== event.pointerId) return;
+      const events = (_c = event.getCoalescedEvents) == null ? void 0 : _c.call(event);
       for (const pointEvent of (events == null ? void 0 : events.length) ? events : [event])
         this.active.stroke.points.push(this.point(pointEvent));
       this.render();
     }
+    end(event) {
+      var _a, _b;
+      if (!this.pointers.has(event.pointerId)) return;
+      this.pointers.delete(event.pointerId);
+      if (((_a = this.active) == null ? void 0 : _a.id) === event.pointerId) this.active = null;
+      if (((_b = this.pan) == null ? void 0 : _b.id) === event.pointerId) this.pan = null;
+      if (this.gesture && this.touches().length < 2) {
+        this.gesture = null;
+        const entry = [...this.pointers.entries()].find(
+          ([, pointer]) => pointer.type === "touch"
+        );
+        if (entry) this.pan = { id: entry[0], position: entry[1] };
+      }
+    }
     finish() {
       this.active = null;
+      this.pan = null;
+      this.gesture = null;
+      this.pointers.clear();
     }
     render() {
       draw(this.ctx, this.value, this.baseImage);
@@ -225,7 +434,7 @@
     for (const stroke of value.strokes) {
       if (!stroke.points.length) continue;
       ctx.strokeStyle = ctx.fillStyle = stroke.tool === "eraser" ? "#fff" : "#202820";
-      ctx.lineWidth = stroke.width * width / WIDTH;
+      ctx.lineWidth = stroke.width * width / PAPER_WIDTH;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       const [x, y] = stroke.points[0];
@@ -242,8 +451,8 @@
   async function sketchPng(value) {
     if (!value.base && !value.strokes.length) return "";
     const canvas = document.createElement("canvas");
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    canvas.width = PAPER_WIDTH;
+    canvas.height = PAPER_HEIGHT;
     draw(canvas.getContext("2d"), value, await loadImage(value.base));
     return canvas.toDataURL("image/png");
   }
@@ -422,6 +631,8 @@
   var sketch = emptySketch();
   var dirty = false;
   var busy = false;
+  var revision = 0;
+  var exportUrls = [];
   var createdAt = (/* @__PURE__ */ new Date()).toISOString();
   function notify(message) {
     $("#status").textContent = message;
@@ -495,7 +706,9 @@
   function reset() {
     HTMLFormElement.prototype.reset.call($("#record"));
     $("#rows").replaceChildren();
-    for (let i = 0; i < 4; i++) row();
+    row();
+    clearExportLinks();
+    revision++;
     sketch = emptySketch();
     createdAt = (/* @__PURE__ */ new Date()).toISOString();
     dirty = false;
@@ -504,6 +717,7 @@
   var editor = new SketchEditor($("#sketch-dialog"), (value) => {
     sketch = value;
     dirty = true;
+    revision++;
     preview().catch((error) => notify(error.message));
   });
   $("#open-sketch").onclick = () => editor.open(sketch).catch((error) => notify(error.message));
@@ -512,13 +726,17 @@
     showForm();
   };
   $("#record").onsubmit = (event) => event.preventDefault();
-  $("#record").addEventListener("input", () => dirty = true);
+  $("#record").addEventListener("input", () => {
+    dirty = true;
+    revision++;
+  });
   $("#remarks").addEventListener("input", grow);
   $("#add-row").onclick = () => {
     if ($("#rows").children.length >= 5e3)
       return notify("Limite di 5.000 righe raggiunto.");
     row();
     dirty = true;
+    revision++;
     $("#rows").lastElementChild.querySelector("input").focus();
   };
   $("#reset-sheet").onclick = () => $("#reset-dialog").showModal();
@@ -532,27 +750,60 @@
     document.dispatchEvent(new Event("ceramic:home"));
     $("#new").focus();
   };
-  function download(blob, name) {
-    const url = URL.createObjectURL(blob), a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 6e4);
+  function clearExportLinks() {
+    for (const url of exportUrls) URL.revokeObjectURL(url);
+    exportUrls = [];
+    $("#export-links").hidden = true;
+    for (const selector of ["#download-pdf", "#download-json"])
+      $(selector).removeAttribute("href");
   }
-  $("#json").onclick = async () => {
+  $("#export-files").onclick = async () => {
+    if (busy) return;
+    busy = true;
+    const button = $("#export-files");
+    button.disabled = true;
+    $("#reset-sheet").disabled = true;
+    button.textContent = "Preparazione\u2026";
+    const snapshotRevision = revision;
     try {
       const record = collect();
+      const stem = filename(record.header);
       record.sketchPng = await sketchPng(record.sketch);
-      download(
-        new Blob([JSON.stringify(record, null, 2)], { type: "application/json" }),
-        `${filename(record.header)}.json`
+      const doc = await createPdf(record, record.sketchPng);
+      const files = [
+        {
+          selector: "#download-pdf",
+          blob: doc.output("blob"),
+          name: `${stem}.pdf`
+        },
+        {
+          selector: "#download-json",
+          blob: new Blob([JSON.stringify(record, null, 2)], {
+            type: "application/json"
+          }),
+          name: `${stem}.json`
+        }
+      ];
+      clearExportLinks();
+      for (const file of files) {
+        const link = $(file.selector);
+        link.href = URL.createObjectURL(file.blob);
+        exportUrls.push(link.href);
+        link.download = file.name;
+      }
+      $("#export-links").hidden = false;
+      for (const file of files) $(file.selector).click();
+      if (revision === snapshotRevision) dirty = false;
+      notify(
+        "PDF e JSON pronti. Puoi riaprirli anche dai collegamenti sotto il pulsante."
       );
-      dirty = false;
-      notify("JSON esportato.");
     } catch (error) {
-      notify(error.message);
+      notify(`Esportazione non riuscita: ${error.message}`);
+    } finally {
+      busy = false;
+      button.disabled = false;
+      $("#reset-sheet").disabled = false;
+      button.textContent = "Salva PDF ed esporta JSON";
     }
   };
   $("#import").onclick = () => $("#json-file").click();
@@ -578,24 +829,6 @@
       notify(`Importazione non riuscita: ${error.message}`);
     } finally {
       event.target.value = "";
-    }
-  };
-  $("#pdf").onclick = async () => {
-    if (busy) return;
-    busy = true;
-    $("#pdf").disabled = true;
-    $("#pdf").textContent = "Preparazione\u2026";
-    try {
-      const record = collect();
-      const doc = await createPdf(record, await sketchPng(record.sketch));
-      download(doc.output("blob"), `${filename(record.header)}.pdf`);
-      notify("PDF esportato.");
-    } catch (error) {
-      notify(`PDF non creato: ${error.message}`);
-    } finally {
-      busy = false;
-      $("#pdf").disabled = false;
-      $("#pdf").textContent = "Esporta PDF";
     }
   };
   window.addEventListener("beforeunload", (event) => {

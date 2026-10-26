@@ -1,5 +1,5 @@
 /* Ogni rilascio ha una cache completa e isolata per questa PWA. */
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const PREFIX = `ceramic-${self.registration.scope}-`;
 const CACHE = PREFIX + VERSION;
 const ASSETS = [
@@ -14,24 +14,24 @@ const ASSETS = [
   "./assets/excavation.webp",
   "./assets/LiberationSans-Regular.ttf",
   "./assets/LiberationSans-Bold.ttf",
+  "./assets/cursor-pen.svg",
+  "./assets/cursor-eraser.svg",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable.png",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) =>
-        cache.addAll(
-          ASSETS.map(
-            (path) =>
-              new Request(new URL(path, self.registration.scope), {
-                cache: "reload",
-              }),
-          ),
+    caches.open(CACHE).then((cache) =>
+      cache.addAll(
+        ASSETS.map(
+          (path) =>
+            new Request(new URL(path, self.registration.scope), {
+              cache: "reload",
+            }),
         ),
       ),
+    ),
   );
 });
 // L'aggiornamento si attiva alla chiusura di tutte le finestre precedenti:

@@ -114,9 +114,8 @@ label input {
 }
 .metadata {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
-  margin-bottom: 20px;
 }
 .columns {
   display: grid;
@@ -124,6 +123,7 @@ label input {
   gap: 20px;
   align-items: start;
 }
+.left-column,
 .right-column {
   display: grid;
   gap: 20px;
@@ -249,7 +249,7 @@ dialog::backdrop {
   padding-top: max(14px, env(safe-area-inset-top));
   border: 0;
   border-radius: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 .sketch-editor[open] {
   display: flex;
@@ -276,33 +276,97 @@ dialog::backdrop {
 .sketch-tools [aria-pressed="true"] {
   background: #e9ddc8;
 }
+/* The white sheet is transformed inside a separate, clipped workspace. */
 .canvas-area {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ebe8df;
-  border-radius: 6px;
+  flex: 1 0 180px;
+  min-height: 180px;
+  position: relative;
+  background: #e8e5dc;
+  border: 1px solid #d5d0c5;
+  border-radius: 7px;
   overflow: hidden;
-}
-canvas {
-  display: block;
-  background: white;
   touch-action: none;
-  max-width: 100%;
-  max-height: 100%;
-  box-shadow: 0 0 0 1px #ddd;
+  user-select: none;
 }
+#canvas {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1200px;
+  height: 900px;
+  max-width: none;
+  max-height: none;
+  background: white;
+  border: 1px solid #a4a69f;
+  box-shadow: 0 4px 18px #302b2533;
+  transform-origin: 0 0;
+  touch-action: none;
+}
+.canvas-area[data-tool="pen"] #canvas {
+  cursor:
+    url("./assets/cursor-pen.svg") 2 30,
+    crosshair;
+}
+.canvas-area[data-tool="eraser"] #canvas {
+  cursor:
+    url("./assets/cursor-eraser.svg") 6 26,
+    cell;
+}
+.canvas-area[data-tool="pan"] {
+  cursor: grab;
+}
+.canvas-area[data-tool="pan"]:active {
+  cursor: grabbing;
+}
+.sketch-dock {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 12px;
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+}
+.sketch-settings,
+.zoom-tools,
 .pen-tools {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 5px 0 max(5px, env(safe-area-inset-bottom));
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sketch-settings {
+  justify-content: space-between;
 }
 .pen-tools input {
-  max-width: 200px;
+  width: 140px;
+  padding: 0;
+}
+.pen-tools label {
+  font-size: 14px;
+}
+.sketch-tools [aria-pressed="true"] {
+  background: var(--green);
+  color: white;
+}
+#zoom-level {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#save-sketch {
+  margin-left: auto;
+}
+.section-label {
+  font: inherit;
+}
+.export-links {
+  margin: 0 0 22px;
+  text-align: right;
+  font-size: 14px;
+}
+.export-links a {
+  color: var(--green);
+  text-underline-offset: 3px;
+  margin-left: 6px;
 }
 .toast {
   position: fixed;
@@ -322,7 +386,7 @@ canvas {
     grid-template-columns: 1fr;
   }
   .metadata {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 14px;
   }
   form {
@@ -512,5 +576,34 @@ canvas {
   }
   .home-actions button {
     min-height: 44px;
+  }
+}
+
+@media (max-width: 800px) {
+  .sketch-dock {
+    gap: 10px;
+  }
+  .sketch-settings {
+    gap: 10px;
+  }
+  .sketch-tools button,
+  .zoom-tools button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .sketch-tools {
+    gap: 6px;
+  }
+  .pen-tools {
+    width: 100%;
+  }
+  .zoom-tools {
+    flex: 1;
+  }
+  #save-sketch {
+    flex: 0 0 auto;
+  }
+  .export-links {
+    text-align: left;
   }
 }

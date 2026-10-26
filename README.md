@@ -1,6 +1,6 @@
 # Ceramic – Summary form
 
-PWA statica per la schedatura ceramica di scavo. Nessun account, API, server applicativo o processo di build. Tutte le risorse sono incluse e servite dallo stesso sito.
+PWA statica per la schedatura ceramica di scavo. Nessun account, API o server applicativo. Il pacchetto include già la versione pronta per il browser. Tutte le risorse sono incluse e servite dallo stesso sito.
 
 ## Pubblicazione su GitHub Pages
 
@@ -23,13 +23,21 @@ La disponibilità della richiesta e l’aspetto dell’installazione dipendono d
 
 ## Uso
 
-La home contiene **Nuova scheda**, **Importa JSON** e **Installa app**. La compilazione presenta `Excavation site`, `Area`, `Strat. Unit`, `Room`, tabella **Fragments**, osservazioni e schizzo. I conteggi richiedono interi non negativi: gli zeri inseriti sono valori effettivi e vengono stampati. Una riga viene esclusa dal PDF solo se tutte le sue celle sono vuote.
+La home contiene **Nuova scheda**, **Importa JSON** e **Installa app**. La compilazione presenta `Excavation site`, `Area`, `Stratigraphic Unit`, `Room`, tabella **Fragments**, osservazioni e Sketch. Su desktop i quattro campi sono in colonna a sinistra e la tabella è subito sotto; a destra si trovano Fabric and remarks e Sketch. Su mobile le due colonne si dispongono in sequenza. Una nuova scheda presenta una sola riga vuota; **Aggiungi riga** aggiunge le successive. I conteggi richiedono interi non negativi: gli zeri inseriti sono valori effettivi e vengono stampati. Una riga viene esclusa dal PDF solo se tutte le sue celle sono vuote.
 
-**Fabric and remarks** cresce con il testo. Tocca il box **Schizzo** per aprire l’editor su tutto lo spazio disponibile della finestra. Il foglio mantiene proporzioni 4:3 e non si deforma ruotando il dispositivo. Supporta penna, dito e mouse, spessore, gomma, annulla/ripeti. **Salva schizzo** torna alla scheda; riaprendo il box puoi continuare a disegnare. Anche Escape/Indietro sul dialogo salva lo schizzo corrente. **Pulisci schizzo** chiede conferma; la cancellazione completa non è annullabile. Il PDF include lo schizzo salvato, senza strumenti.
+**Fabric and remarks** ha la stessa dimensione e lo stesso peso del titolo Fragments, cresce con il testo e mostra `type here` come guida. Tocca il box **Sketch**, con testo `tap to draw`, per aprire l’editor su tutto lo spazio disponibile della finestra. Il foglio bianco mantiene proporzioni 4:3 ed è separato dal contenitore con bordo, ombra e margine su tutti i lati.
 
-**Reset scheda**, in basso a sinistra, apre il box **Vuoi resettare la scheda?** con **Sì / No**. Sì cancella dati e schizzo e torna alla home; No chiude il box.
+Tutti i comandi sono sotto al foglio: **Penna**, **Gomma**, **Sposta foglio**, **Annulla tratto**, **Ripeti tratto**, **Pulisci sketch**, spessore penna, **Riduci**, **Ingrandisci**, **Adatta al contenitore** e **Salva sketch**. Il puntatore sul foglio è una matita in modalità Penna e una gomma in modalità Gomma, nei dispositivi che mostrano un cursore. I pulsanti restano solo testuali.
 
-**Esporta JSON** salva una copia modificabile: è il formato da conservare per riprendere il lavoro. Non sono presenti salvataggi locali automatici o un archivio del browser. Esporta il JSON prima di chiudere: il browser può mostrare un avviso in caso di modifiche non esportate, ma sui dispositivi mobili l’avviso non è garantito. Il PDF è una copia per la stampa e non sostituisce il JSON.
+Lo zoom va da 100% (foglio adattato con margine) a 600%. Due dita permettono zoom e spostamento; su desktop puoi usare i pulsanti oppure Ctrl/Command e rotella per lo zoom, la rotella per spostare il foglio ingrandito, o **Sposta foglio** per trascinarlo. **Adatta al contenitore** ripristina la vista iniziale. Zoom e spostamento non cambiano dimensioni, proporzioni o coordinate del disegno esportato. Sono ignorati i contatti touch mentre la penna sta tracciando, per ridurre i segni del palmo; il comportamento dipende anche dal driver dello stilo.
+
+**Salva sketch** torna alla scheda; riaprendo il box puoi continuare a disegnare. Anche Escape/Indietro sul dialogo salva lo sketch corrente. **Pulisci sketch** chiede conferma; la cancellazione completa non è annullabile. Il PDF include il disegno salvato, senza strumenti e con l’impaginazione della versione 1.1.
+
+**Reset scheda**, in basso a sinistra, apre **Vuoi resettare la scheda?** con **Sì / No**. Sì cancella tutti i campi e lo sketch e torna alla home; No chiude il box.
+
+**Salva PDF ed esporta JSON** è l’unico pulsante di esportazione: prepara entrambi i file dalla stessa copia dei dati e con lo stesso nome base. I due download vengono avviati automaticamente. Sotto al pulsante restano i collegamenti **PDF** e **JSON** per recuperarli individualmente, anche se il browser limita i download multipli. Non viene creato uno ZIP. Il JSON è la copia modificabile da conservare per riprendere il lavoro; il PDF è la copia per la stampa.
+
+Non sono presenti salvataggi locali automatici o un archivio del browser. Esporta i file prima di chiudere: il browser può mostrare un avviso in caso di modifiche non esportate, ma sui dispositivi mobili l’avviso non è garantito.
 
 ## Nomi dei file
 
@@ -63,7 +71,9 @@ L’importazione verifica i campi prima di sostituire la scheda: limite 30 MB, 5
 - `bootstrap.js`: allineamento del sottotitolo e segnalazione degli errori di avvio.
 - `build.mjs`: generazione riproducibile del bundle.
 - `js/data.js`: schema, validazione e nomi file.
-- `js/sketch.js`: editor e rendering dei tratti.
+- `js/sketch.js`: editor, interazione con penna/touch e rendering dei tratti.
+- `js/sketch-view.js`: geometria indipendente per zoom e spostamento.
+- `assets/cursor-pen.svg`, `assets/cursor-eraser.svg`: puntatori del foglio.
 - `js/pdf.js`: generazione PDF.
 - `sw.js`: cache offline, limitata allo scope dell’app.
 - `manifest.webmanifest`: identità e icone PWA.
@@ -94,8 +104,17 @@ Dopo la pubblicazione apri il sito online, attendi qualche secondo per scaricare
 - Summary form allineato alla larghezza di Ceramic anche dopo il caricamento del font e il ridimensionamento.
 - Filigrana dietro ai pulsanti su desktop e mobile; su mobile il paesaggio è ingrandito e ritagliato.
 
+## Novità v1.2
+
+- Nuovo layout: dati di scavo e Fragments a sinistra; Fabric and remarks e Sketch a destra.
+- Una sola riga iniziale, titoli uniformati, etichetta Stratigraphic Unit per esteso.
+- Testi guida `type here` e `tap to draw`.
+- Unico pulsante per esportare PDF e JSON con lo stesso nome base.
+- Editor Sketch con comandi inferiori, modalità Penna/Gomma/Sposta foglio, cursori dedicati, margine intorno al foglio, zoom e gesto a due dita.
+- Renderer PDF identico alla versione 1.1; lo schema JSON rimane compatibile.
+
 ## Verifiche di questa consegna
 
-Test automatici del formato dati, flussi dei pulsanti in ambiente DOM simulato, richiesta di installazione simulata, importazione JSON precedente, reset Sì/No, tratti dello schizzo dopo annulla/ripeti ed esportazione JSON. Verificata anche la cache offline: risorse incluse, URL con parametri, navigazione senza rete e isolamento dalle altre app. Il PDF è stato generato e controllato con font Liberation Sans incorporato e contenuto lungo su quattro pagine.
+Test automatici del formato dati, flussi dei pulsanti in ambiente DOM simulato, installazione simulata, importazione precedente, reset Sì/No, esportazione con libreria PDF e font reali, conservazione dei tratti dopo annulla/ripeti, zoom e spostamento, margini del foglio e gesto a due dita senza segni accidentali. Verificata la cache offline comprese le nuove risorse dei puntatori. Il file del renderer PDF è stato confrontato con la versione precedente ed è invariato.
 
-L’ambiente DOM di test non sostituisce il browser reale: restano da controllare sul dispositivo la resa grafica, la richiesta nativa di installazione e il disegno con lo stilo.
+L’ambiente DOM di test non sostituisce il browser reale: restano da controllare sul dispositivo la resa grafica, la richiesta nativa di installazione, i gesti touch e il disegno con lo stilo.
