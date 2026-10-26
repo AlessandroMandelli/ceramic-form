@@ -1,5 +1,5 @@
 /* Ogni rilascio ha una cache completa e isolata per questa PWA. */
-const VERSION = "1.3.0";
+const VERSION = "1.5.0";
 const PREFIX = `ceramic-${self.registration.scope}-`;
 const CACHE = PREFIX + VERSION;
 const ASSETS = [

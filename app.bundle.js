@@ -458,6 +458,57 @@
     return canvas.toDataURL("image/png");
   }
 
+  // js/pdf-sketch.js
+  function drawPdfSketch(doc, sketch2, x, y, width, height) {
+    doc.saveGraphicsState();
+    try {
+      doc.rect(x, y, width, height, null);
+      doc.clip();
+      doc.discardPath();
+      if (sketch2.base) {
+        const image2 = doc.getImageProperties(sketch2.base);
+        const scale = Math.min(width / image2.width, height / image2.height);
+        const imageWidth = image2.width * scale;
+        const imageHeight = image2.height * scale;
+        doc.addImage(
+          sketch2.base,
+          "PNG",
+          x + (width - imageWidth) / 2,
+          y + (height - imageHeight) / 2,
+          imageWidth,
+          imageHeight,
+          void 0,
+          "FAST"
+        );
+      }
+      doc.setLineCap("round");
+      doc.setLineJoin("round");
+      for (const stroke of sketch2.strokes) {
+        if (!stroke.points.length) continue;
+        const color = stroke.tool === "eraser" ? [255, 255, 255] : [32, 40, 32];
+        doc.setDrawColor(...color);
+        doc.setFillColor(...color);
+        const thickness = stroke.width * width / PAPER_WIDTH;
+        doc.setLineWidth(thickness);
+        const [firstX, firstY] = stroke.points[0];
+        const startX = x + firstX * width;
+        const startY = y + firstY * height;
+        if (stroke.points.length === 1) {
+          doc.circle(startX, startY, thickness / 2, "F");
+        } else {
+          doc.moveTo(startX, startY);
+          for (let i = 1; i < stroke.points.length; i++) {
+            const [px, py] = stroke.points[i];
+            doc.lineTo(x + px * width, y + py * height);
+          }
+          doc.stroke();
+        }
+      }
+    } finally {
+      doc.restoreGraphicsState();
+    }
+  }
+
   // js/pdf.js
   var fonts;
   var engine;
@@ -500,7 +551,7 @@
       });
     return fonts;
   }
-  async function createPdf(record, png) {
+  async function createPdf(record, png = record.sketchPng || "") {
     await loadEngine();
     const doc = new window.jspdf.jsPDF({
       unit: "mm",
@@ -589,7 +640,15 @@
       let x = left;
       ["Type/Form", "Rims", "Handles", "Feet", "Bodies"].forEach((label, i) => {
         doc.rect(x, top + 7, widths[i], 8);
-        text2(label, x + 1.2, top + 12, true, 7.5);
+        if (i === 0) text2(label, x + 1.2, top + 12, true, 7.5);
+        else {
+          doc.setFont("Liberation", "bold");
+          doc.setFontSize(7.5);
+          doc.text(label, x + widths[i] / 2, top + 11, {
+            align: "center",
+            baseline: "middle"
+          });
+        }
         x += widths[i];
       });
       text2("Fabric and remarks", split + 3, top + 5, true);
@@ -605,7 +664,11 @@
       (row2) => COLUMNS.map((key, i) => wrap(row2[key], widths[i] - 3, 8.5))
     );
     const notes = wrap(record.remarks, right - split - 6, 9);
-    let rowIndex = 0, noteIndex = 0, sketchPending = Boolean(png), page = 1;
+    const sketchModel = record.sketch && Array.isArray(record.sketch.strokes) ? record.sketch : null;
+    const hasSketch = sketchModel ? Boolean(
+      sketchModel.base || sketchModel.strokes.some((stroke) => stroke.points.length)
+    ) : Boolean(png);
+    let rowIndex = 0, noteIndex = 0, sketchPending = hasSketch, page = 1;
     do {
       if (page > 1) {
         doc.addPage();
@@ -648,16 +711,27 @@
         const sketchHeight = (right - split - 8) * 0.75;
         if (notesY + sketchHeight + 12 <= bottom) {
           line(split, notesY + 7, right, notesY + 7);
-          doc.addImage(
-            png,
-            "PNG",
-            split + 4,
-            notesY + 11,
-            right - split - 8,
-            sketchHeight,
-            void 0,
-            "FAST"
-          );
+          if (sketchModel) {
+            drawPdfSketch(
+              doc,
+              sketchModel,
+              split + 4,
+              notesY + 11,
+              right - split - 8,
+              sketchHeight
+            );
+          } else {
+            doc.addImage(
+              png,
+              "PNG",
+              split + 4,
+              notesY + 11,
+              right - split - 8,
+              sketchHeight,
+              void 0,
+              "FAST"
+            );
+          }
           sketchPending = false;
         }
       }
@@ -846,7 +920,7 @@
       const record = collect();
       const stem = filename(record.header);
       record.sketchPng = await sketchPng(record.sketch);
-      const doc = await createPdf(record, record.sketchPng);
+      const doc = await createPdf(record);
       const files = [
         {
           selector: "#download-pdf",

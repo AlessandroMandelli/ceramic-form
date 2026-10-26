@@ -172,30 +172,45 @@ textarea {
   font-weight: 400;
 }
 .sketch-box {
+  position: relative;
   padding: 0;
-  display: grid;
-  place-items: center;
+  display: block;
   width: 100%;
   height: 300px;
   border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+  isolation: isolate;
   background: #fff;
   color: #758176;
   font-weight: 400;
 }
 .sketch-box img {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  display: block;
   object-fit: contain;
-  min-height: 0;
+  pointer-events: none;
 }
-.sketch-box span {
-  line-height: 2;
+.sketch-box .sketch-prompt {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  margin: 0;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 88%);
+  color: #657266;
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
 }
-.hint {
-  font-size: 12px;
+th:not(:first-child) {
   text-align: center;
-  color: #6e756c;
-  margin: 9px 0 0;
+  vertical-align: middle;
 }
 .actions {
   display: flex;
@@ -295,13 +310,13 @@ dialog::backdrop {
 .canvas-area[data-tool="pen"],
 .canvas-area[data-tool="pen"] * {
   cursor:
-    url("./assets/cursor-pen.svg") 2 30,
+    url("./assets/cursor-pen.svg") 3 29,
     crosshair;
 }
 .canvas-area[data-tool="eraser"],
 .canvas-area[data-tool="eraser"] * {
   cursor:
-    url("./assets/cursor-eraser.svg") 6 26,
+    url("./assets/cursor-eraser.svg") 4 21,
     cell;
 }
 .canvas-area[data-tool="pan"] {

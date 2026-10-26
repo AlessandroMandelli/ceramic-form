@@ -16,10 +16,10 @@
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Ceramic – Summary form</title>
-    <link rel="stylesheet" href="./styles.css?v=1.3.0" />
-    <script defer src="./pwa-install.js?v=1.3.0"></script>
-    <script defer src="./bootstrap.js?v=1.3.0"></script>
-    <script defer src="./app.bundle.js?v=1.3.0"></script>
+    <link rel="stylesheet" href="./styles.css?v=1.5.0" />
+    <script defer src="./pwa-install.js?v=1.5.0"></script>
+    <script defer src="./bootstrap.js?v=1.5.0"></script>
+    <script defer src="./app.bundle.js?v=1.5.0"></script>
   </head>
   <body>
     <main id="home" class="home">
@@ -110,10 +110,13 @@
               <button type="button" id="open-sketch" class="sketch-box">
                 <img id="sketch-preview" alt="Saved sketch" hidden /><span
                   id="sketch-placeholder"
-                  >tap to draw</span
+                  class="sketch-prompt"
+                  >Tap to draw</span
+                >
+                <span id="sketch-hint" class="sketch-prompt" hidden
+                  >Tap to edit</span
                 >
               </button>
-              <p id="sketch-hint" class="hint" hidden>Tap to edit</p>
             </section>
           </div>
         </div>

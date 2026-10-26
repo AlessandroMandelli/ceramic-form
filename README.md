@@ -76,7 +76,8 @@ L’importazione verifica i campi prima di sostituire la scheda: limite 30 MB, 5
 - `js/sketch.js`: editor, interazione con penna/touch e rendering dei tratti.
 - `js/sketch-view.js`: geometria indipendente per zoom e spostamento.
 - `assets/cursor-pen.svg`, `assets/cursor-eraser.svg`: puntatori del foglio.
-- `js/pdf.js`: generazione PDF.
+- `js/pdf.js`: impaginazione PDF.
+- `js/pdf-sketch.js`: disegno vettoriale dei tratti nel PDF e compatibilità con immagini precedenti.
 - `sw.js`: cache offline, limitata allo scope dell’app.
 - `manifest.webmanifest`: identità e icone PWA.
 - `vendor/`: jsPDF locale e licenze dei componenti.
@@ -126,8 +127,23 @@ Dopo la pubblicazione apri il sito online, attendi qualche secondo per scaricare
 - Cursore Pen/Eraser mantenuto anche sul contenitore che riceve la cattura del puntatore durante il trascinamento.
 - PDF: etichette Excavation site:, Area:, Stratigraphic unit: e Room: in grassetto compresi i due punti; valori normali; numeri centrati nelle celle in entrambe le direzioni; pagine nel formato 1/n in basso a destra.
 
+## Novità v1.4
+
+- Rims, Handles, Feet e Bodies centrati orizzontalmente e verticalmente nell’intestazione della tabella, sia nell’app sia nel PDF.
+- Puntatori Pen/Eraser Monolinea: profilo scuro, riempimento bianco e nessuna linea longitudinale interna alla matita. Le punte attive corrispondono al punto di disegno/cancellazione.
+- Tap to draw con T maiuscola e Tap to edit sovrapposti in alto a sinistra al box Sketch. Entrambi sono elementi della sola interfaccia, esclusi da PDF e immagine esportata.
+- Anteprima Sketch con immagine interna distanziata dal bordo, ritaglio del contenuto e angoli arrotondati continui.
+
+## Novità v1.5: Sketch vettoriale nel PDF
+
+Gli sketch che contengono i tratti originali vengono inseriti nel PDF come percorsi vettoriali, mantenendo posizione, spessore, colore, estremità e giunzioni arrotondate. I tratti singoli diventano punti vettoriali. Il riquadro del disegno applica un ritaglio per evitare sbordi sul resto della scheda.
+
+La gomma riproduce il comportamento dell’editor con percorsi bianchi opachi, nell’ordine originale dei tratti: può coprire sia altri vettori sia una vecchia immagine di base. Non esegue una sottrazione geometrica dei tracciati nascosti; il risultato visivo resta quello dell’editor.
+
+Le vecchie immagini di sketch rimangono raster, senza conversioni automatiche. Se sopra viene disegnato altro, il PDF contiene l’immagine originale e i nuovi tratti vettoriali. I JSON delle versioni precedenti che contengono già i tratti possono essere riesportati in vettoriale senza ridisegnare. Le sole immagini non permettono di recuperare i tratti originali.
+
+L’anteprima nell’app e il campo `sketchPng` del JSON restano immagini per compatibilità; il PDF usa direttamente `sketch.strokes` quando disponibili. Nessun cambio allo schema dei dati, alle etichette, alla numerazione o all’impaginazione della scheda.
+
 ## Verifiche di questa consegna
 
-27 test automatici superati: flussi in DOM simulato, export con libreria e font PDF reali, formati e validazione dati, remove row, Back, stili del cursore sul contenitore di cattura, ordine e dimensioni dei comandi, zoom, tratti e cache offline. Verificati anche grassetti, allineamento dei numeri e conteggio i/n nelle chiamate del renderer PDF; generati e ispezionati PDF di una e quattro pagine.
-
-Il collaudo DOM non sostituisce il browser reale: resa grafica su dispositivo, installazione nativa e comportamento dei driver touch/stilo restano da provare sul dispositivo.
+30 test automatici superati. Verificati export vettoriale puro, compatibilità con immagini precedenti, percorsi di gomma, tratti e punti singoli, font, numerazione, dati e cache offline. Nei PDF di prova analizzati sono presenti zero immagini per lo sketch vettoriale puro; nel caso misto è presente soltanto l’immagine di base. Verificati anche il passaggio dello sketch su una pagina successiva e la resa visiva dei PDF generati.
