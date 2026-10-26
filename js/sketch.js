@@ -79,6 +79,7 @@ export class SketchEditor {
       this.applyView();
     };
     document.querySelector("#save-sketch").onclick = () => this.save();
+    document.querySelector("#back-sketch").onclick = () => this.save();
     dialog.addEventListener("cancel", (event) => {
       event.preventDefault();
       this.save();
@@ -291,7 +292,7 @@ export function loadImage(source) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(Error("Impossibile leggere lo schizzo."));
+    image.onerror = () => reject(Error("Unable to read the sketch."));
     image.src = source;
   });
 }

@@ -8,12 +8,10 @@ function loadEngine() {
       const script = document.createElement("script");
       script.src = "./vendor/jspdf.umd.min.js";
       script.onload = () =>
-        window.jspdf
-          ? resolve()
-          : reject(Error("Motore PDF non inizializzato."));
+        window.jspdf ? resolve() : reject(Error("PDF engine not initialized."));
       script.onerror = () => {
         script.remove();
-        reject(Error("Motore PDF non disponibile. Riapri l’app online."));
+        reject(Error("PDF engine unavailable. Reopen the app online."));
       };
       document.head.append(script);
     }).catch((error) => {
@@ -29,7 +27,7 @@ async function fontData() {
         const response = await fetch(`./assets/${name}.ttf`);
         if (!response.ok)
           throw Error(
-            "Font PDF non disponibile. Riprova dopo un caricamento online.",
+            "PDF font unavailable. Reopen the app online and try again.",
           );
         const bytes = new Uint8Array(await response.arrayBuffer());
         let binary = "";
@@ -73,26 +71,58 @@ export async function createPdf(record, png) {
     doc.setFontSize(size);
     return doc.splitTextToSize(String(s), w);
   };
+  // Measure bold labels independently; values stay regular, including wrapped lines.
+  function labelLines(label, value, width) {
+    const prefix = `${label}:`;
+    text("", 0, 0, true);
+    const prefixWidth = doc.getTextWidth(prefix + " ");
+    text("", 0, 0, false);
+    const lines = [{ label: prefix, value: "", indent: prefixWidth }];
+    for (const character of String(value ?? "")) {
+      let last = lines[lines.length - 1];
+      if (character === "\n") {
+        lines.push({ label: "", value: "", indent: 0 });
+        continue;
+      }
+      if (doc.getTextWidth(last.value + character) + last.indent > width) {
+        last = { label: "", value: "", indent: 0 };
+        lines.push(last);
+      }
+      last.value += character;
+    }
+    return lines;
+  }
+  function drawLabel(lines, x, y) {
+    lines.forEach((entry, index) => {
+      const baseline = y + index * 4.3;
+      if (entry.label) text(entry.label, x, baseline, true);
+      if (entry.value) text(entry.value, x + entry.indent, baseline);
+    });
+  }
   let tableY, notesY, top;
   function header(continuation = false) {
     doc.setLineWidth(0.2);
     doc.setDrawColor(0);
     doc.setTextColor(0);
-    const site = wrap(`Excavation site: ${record.header.excavationSite}`, 82);
+    const site = labelLines(
+      "Excavation site",
+      record.header.excavationSite,
+      82,
+    );
     const h = Math.max(12, site.length * 4.3 + 5);
     doc.rect(left, 10, 190, h);
     line(112, 10, 112, 10 + h);
     text("Ceramic - Summary form", 13, 17, true, 11);
-    text(site, 115, 16, false, 9);
+    drawLabel(site, 115, 16);
     const labels = [
       ["Area", record.header.area],
-      ["Strat. Unit", record.header.stratUnit],
+      ["Stratigraphic unit", record.header.stratUnit],
       ["Room", record.header.room],
     ];
-    const metadata = labels.map(([key, value]) => wrap(`${key}: ${value}`, 58));
-    const mh = Math.max(11, ...metadata.map((t) => t.length * 4.3 + 5));
+    const metadata = labels.map(([key, value]) => labelLines(key, value, 58));
+    const mh = Math.max(11, ...metadata.map((lines) => lines.length * 4.3 + 5));
     doc.rect(left, 10 + h, 190, mh);
-    metadata.forEach((t, i) => text(t, 13 + i * 63, 16 + h));
+    metadata.forEach((lines, i) => drawLabel(lines, 13 + i * 63, 16 + h));
     top = 10 + h + mh;
     tableY = top + 15;
     notesY = top + 7;
@@ -140,7 +170,21 @@ export async function createPdf(record, png) {
       let x = left;
       cells.forEach((lines, i) => {
         doc.rect(x, tableY, widths[i], height);
-        text(lines.splice(0, count), x + 1.5, tableY + 4.3, false, 8.5);
+        const content = lines.splice(0, count);
+        if (i === 0) {
+          if (content.length) text(content, x + 1.5, tableY + 4.3, false, 8.5);
+        } else {
+          doc.setFont("Liberation", "normal");
+          doc.setFontSize(8.5);
+          content.forEach((value, index) =>
+            doc.text(
+              value,
+              x + widths[i] / 2,
+              tableY + height / 2 + (index - (content.length - 1) / 2) * 4,
+              { align: "center", baseline: "middle" },
+            ),
+          );
+        }
         x += widths[i];
       });
       tableY += height;
@@ -169,13 +213,20 @@ export async function createPdf(record, png) {
         sketchPending = false;
       }
     }
-    text(String(page), 195, 289, false, 8);
+
     page++;
   } while (
     rowIndex < rowQueue.length ||
     noteIndex < notes.length ||
     sketchPending
   );
+  const totalPages = doc.getNumberOfPages();
+  for (let number = 1; number <= totalPages; number++) {
+    doc.setPage(number);
+    doc.setFont("Liberation", "normal");
+    doc.setFontSize(8);
+    doc.text(`${number}/${totalPages}`, 200, 289, { align: "right" });
+  }
   doc.setProperties({
     title: "Ceramic - Summary form",
     subject: record.header.excavationSite,

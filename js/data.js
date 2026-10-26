@@ -33,7 +33,7 @@ function text(value, limit = 100000) {
     !["string", "number"].includes(typeof value) ||
     String(value).length > limit
   )
-    throw Error("Campo JSON non valido o troppo lungo.");
+    throw Error("Invalid JSON field or text too long.");
   return String(value);
 }
 function image(value) {
@@ -43,7 +43,7 @@ function image(value) {
     !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value) ||
     value.length > 20000000
   )
-    throw Error("Immagine dello schizzo non valida.");
+    throw Error("Invalid sketch image.");
   return value;
 }
 export function parseRecord(data) {
@@ -54,17 +54,17 @@ export function parseRecord(data) {
     !data.header ||
     data.rows.length > 5000
   )
-    throw Error("Il file non è una scheda Ceramic compatibile.");
+    throw Error("This file is not a compatible Ceramic form.");
   const header = Object.fromEntries(
     HEADER.map((key) => [key, text(data.header[key], 300)]),
   );
   const rows = data.rows.map((row) => {
-    if (!row || typeof row !== "object") throw Error("Riga non valida.");
+    if (!row || typeof row !== "object") throw Error("Invalid row.");
     return Object.fromEntries(
       COLUMNS.map((key) => {
         const value = text(row[key], key === "typeForm" ? 1000 : 12);
         if (key !== "typeForm" && !/^\d*$/.test(value))
-          throw Error("I conteggi devono essere numeri interi non negativi.");
+          throw Error("Counts must be non-negative whole numbers.");
         return [key, value];
       }),
     );
@@ -76,7 +76,7 @@ export function parseRecord(data) {
       !Array.isArray(data.sketch.strokes) ||
       data.sketch.strokes.length > 30000
     )
-      throw Error("Schizzo troppo grande.");
+      throw Error("Sketch too large.");
     let pointCount = 0;
     sketch.strokes = data.sketch.strokes.map((stroke) => {
       if (
@@ -86,16 +86,16 @@ export function parseRecord(data) {
         stroke.width > 100 ||
         !Array.isArray(stroke.points)
       )
-        throw Error("Tratto non valido.");
+        throw Error("Invalid stroke.");
       pointCount += stroke.points.length;
-      if (pointCount > 1000000) throw Error("Troppi punti nello schizzo.");
+      if (pointCount > 1000000) throw Error("Too many points in the sketch.");
       const points = stroke.points.map((point) => {
         if (
           !Array.isArray(point) ||
           point.length !== 2 ||
           point.some((n) => !Number.isFinite(n) || n < 0 || n > 1)
         )
-          throw Error("Coordinate dello schizzo non valide.");
+          throw Error("Invalid sketch coordinates.");
         return [...point];
       });
       return { tool: stroke.tool, width: stroke.width, points };

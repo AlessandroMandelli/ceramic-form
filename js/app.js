@@ -40,7 +40,7 @@ function row(values = emptyRow()) {
     input.maxLength = index ? 12 : 1000;
     input.setAttribute(
       "aria-label",
-      `${["Type/Form", "Rims", "Handles", "Feet", "Bodies"][index]} – riga ${$("#rows").children.length + 1}`,
+      `${["Type/Form", "Rims", "Handles", "Feet", "Bodies"][index]} – row ${$("#rows").children.length + 1}`,
     );
     if (index) {
       input.pattern = "[0-9]*";
@@ -52,7 +52,31 @@ function row(values = emptyRow()) {
     tr.append(td);
   });
   $("#rows").append(tr);
+  updateRemoveButton();
 }
+function updateRemoveButton() {
+  $("#remove-row").disabled = busy || $("#rows").children.length <= 1;
+}
+function removeLastRow() {
+  if ($("#rows").children.length <= 1) return;
+  $("#rows").lastElementChild.remove();
+  dirty = true;
+  revision++;
+  updateRemoveButton();
+}
+$("#remove-row").onclick = () => {
+  if ($("#rows").children.length <= 1) return;
+  const filled = [
+    ...$("#rows").lastElementChild.querySelectorAll("input"),
+  ].some((input) => input.value.trim());
+  if (filled) $("#remove-dialog").showModal();
+  else removeLastRow();
+};
+$("#remove-no").onclick = () => $("#remove-dialog").close();
+$("#remove-yes").onclick = () => {
+  removeLastRow();
+  $("#remove-dialog").close();
+};
 function collect() {
   return {
     schema: "ceramic-summary-form-pwa-v3",
@@ -118,7 +142,7 @@ $("#record").addEventListener("input", () => {
 $("#remarks").addEventListener("input", grow);
 $("#add-row").onclick = () => {
   if ($("#rows").children.length >= 5000)
-    return notify("Limite di 5.000 righe raggiunto.");
+    return notify("The limit of 5,000 rows has been reached.");
   row();
   dirty = true;
   revision++;
@@ -148,8 +172,9 @@ $("#export-files").onclick = async () => {
   busy = true;
   const button = $("#export-files");
   button.disabled = true;
+  updateRemoveButton();
   $("#reset-sheet").disabled = true;
-  button.textContent = "Preparazione…";
+  button.textContent = "Preparing…";
   const snapshotRevision = revision;
   try {
     const record = collect();
@@ -183,15 +208,18 @@ $("#export-files").onclick = async () => {
     for (const file of files) $(file.selector).click();
     if (revision === snapshotRevision) dirty = false;
     notify(
-      "PDF e JSON pronti. Puoi riaprirli anche dai collegamenti sotto il pulsante.",
+      "PDF and JSON are ready. You can also use the links below the button.",
     );
   } catch (error) {
-    notify(`Esportazione non riuscita: ${error.message}`);
+    notify(
+      "Export failed. Please try again. If the problem persists, reopen the app online.",
+    );
   } finally {
     busy = false;
+    updateRemoveButton();
     button.disabled = false;
     $("#reset-sheet").disabled = false;
-    button.textContent = "Salva PDF ed esporta JSON";
+    button.textContent = "Save PDF and JSON";
   }
 };
 $("#import").onclick = () => $("#json-file").click();
@@ -199,9 +227,14 @@ $("#json-file").onchange = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   try {
-    if (file.size > 30000000) throw Error("Il file supera il limite di 30 MB.");
-    const raw = JSON.parse(await file.text()),
-      record = parseRecord(raw);
+    if (file.size > 30000000) throw Error("The file exceeds the 30 MB limit.");
+    let raw;
+    try {
+      raw = JSON.parse(await file.text());
+    } catch {
+      throw Error("Invalid or unreadable JSON file.");
+    }
+    const record = parseRecord(raw);
     // Decode before changing the form, so an invalid image cannot destroy existing input.
     await sketchPng(record.sketch);
     reset();
@@ -217,9 +250,9 @@ $("#json-file").onchange = async (event) => {
     await preview();
     dirty = false;
     showForm();
-    notify("Scheda importata.");
+    notify("Form imported.");
   } catch (error) {
-    notify(`Importazione non riuscita: ${error.message}`);
+    notify(`Import failed: ${error.message}`);
   } finally {
     event.target.value = "";
   }
