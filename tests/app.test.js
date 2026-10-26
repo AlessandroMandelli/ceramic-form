@@ -52,18 +52,21 @@ function setup({ app = true, standalone = false } = {}) {
     height: 700,
   });
   const downloads = [];
+  const downloadNames = [];
   w.URL.createObjectURL = (blob) => {
     downloads.push(blob);
     return "blob:example";
   };
   w.URL.revokeObjectURL = () => {};
-  w.HTMLAnchorElement.prototype.click = function () {};
+  w.HTMLAnchorElement.prototype.click = function () {
+    downloadNames.push(this.download);
+  };
   w.eval(read("pwa-install.js"));
   w.eval(read("bootstrap.js"));
   if (app) w.eval(read("app.bundle.js"));
   w.document.dispatchEvent(new w.Event("DOMContentLoaded"));
   const $ = (selector) => w.document.querySelector(selector);
-  return { dom, w, $, errors, downloads };
+  return { dom, w, $, errors, downloads, downloadNames };
 }
 function blobText(w, blob) {
   return new Promise((resolve, reject) => {
@@ -151,7 +154,7 @@ test("install invokes native prompt, handles rejection and hides button when ins
   }
 });
 test("one export produces PDF and JSON with matching names and restored sketch strokes", async () => {
-  const { dom, w, $, errors, downloads } = setup();
+  const { dom, w, $, errors, downloads, downloadNames } = setup();
   try {
     $("#new").click();
     $("#excavationSite").value = "Dime";
@@ -191,11 +194,18 @@ test("one export produces PDF and JSON with matching names and restored sketch s
     enablePdf(w);
     await $("#export-files").onclick();
     assert.equal(downloads.length, 2, $("#status").textContent);
+    assert.equal($("#export-links"), null);
+    assert.equal($("#download-pdf"), null);
+    assert.equal($("#download-json"), null);
+    assert.doesNotMatch(
+      $("#status").textContent,
+      /PDF and JSON are ready|Files ready/,
+    );
     assert.equal(downloads[0].type, "application/pdf");
     assert.ok(downloads[0].size > 1000);
     assert.equal(
-      $("#download-pdf").download.replace(/\.pdf$/, ""),
-      $("#download-json").download.replace(/\.json$/, ""),
+      downloadNames[0].replace(/\.pdf$/, ""),
+      downloadNames[1].replace(/\.json$/, ""),
     );
     const record = JSON.parse(await blobText(w, downloads[1]));
     assert.equal(record.header.excavationSite, "Dime");
@@ -570,5 +580,66 @@ test("Sketch prompts stay inside the rounded preview, in its top-left corner", a
   } finally {
     await tick();
     dom.window.close();
+  }
+});
+
+test("iPhone, Android and iPad desktop mode each download one ZIP containing both files", async () => {
+  for (const device of [
+    {
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      platform: "iPhone",
+      maxTouchPoints: 5,
+    },
+    {
+      userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+      platform: "Linux armv8l",
+      maxTouchPoints: 5,
+    },
+    {
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)",
+      platform: "MacIntel",
+      maxTouchPoints: 5,
+    },
+  ]) {
+    const { dom, w, $, downloads, downloadNames, errors } = setup();
+    try {
+      for (const [key, value] of Object.entries(device))
+        Object.defineProperty(w.navigator, key, { configurable: true, value });
+      w.setImmediate = setImmediate;
+      w.clearImmediate = clearImmediate;
+      w.eval(read("vendor/jszip.min.js"));
+      enablePdf(w);
+      $("#new").click();
+      $("#excavationSite").value = "Dime";
+      $("#area").value = "A12";
+      await $("#export-files").onclick();
+      assert.equal(downloads.length, 1, $("#status").textContent);
+      assert.equal(downloads[0].type, "application/zip");
+      assert.match(downloadNames[0], /^Dime_A12_.*\.zip$/);
+      const bytes = await new Promise((resolve, reject) => {
+        const reader = new w.FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(downloads[0]);
+      });
+      const archive = await w.JSZip.loadAsync(bytes);
+      const names = Object.keys(archive.files);
+      assert.equal(names.length, 2);
+      const stem = downloadNames[0].replace(/\.zip$/, "");
+      assert.ok(names.includes(stem + ".pdf"));
+      assert.ok(names.includes(stem + ".json"));
+      const pdf = await archive.file(stem + ".pdf").async("string");
+      assert.ok(pdf.startsWith("%PDF-"));
+      const record = JSON.parse(
+        await archive.file(stem + ".json").async("string"),
+      );
+      assert.equal(record.header.area, "A12");
+      assert.equal($("#export-links"), null);
+      assert.equal($("#export-files").disabled, false);
+      assert.deepEqual(errors, []);
+    } finally {
+      await tick();
+      dom.window.close();
+    }
   }
 });
