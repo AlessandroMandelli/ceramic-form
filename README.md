@@ -4,13 +4,13 @@ PWA statica per la schedatura ceramica di scavo. Nessun account, API, server app
 
 ## Pubblicazione su GitHub Pages
 
-1. Estrai lo ZIP e apri la cartella `archeologia`.
-2. Carica **il contenuto** della cartella nella radice della repository GitHub: `index.html`, `styles.css`, `js`, `assets`, `vendor`, `manifest.webmanifest`, `sw.js` e gli altri file. Evita una cartella `archeologia` annidata nella repository.
+1. Estrai lo ZIP: `index.html` si trova direttamente nella cartella estratta.
+2. Carica **tutti i file estratti** nella radice della repository GitHub: `index.html`, `styles.css`, `js`, `assets`, `vendor`, `manifest.webmanifest`, `sw.js` e gli altri file. Non caricare un’ulteriore sottocartella: `index.html` deve essere nella radice pubblicata.
 3. Nella repository apri **Settings → Pages**. In **Build and deployment** scegli **Deploy from a branch**, branch `main`, cartella `/ (root)`, poi **Save**.
 4. Al termine della pubblicazione apri `https://NOMEUTENTE.github.io/NOMEREPOSITORY/`. Per la repository attuale sarà `https://alessandromandelli.github.io/archeologia/`.
 5. Apri il sito online e attendi il caricamento completo prima di usarlo senza connessione.
 
-GitHub può spostare le voci delle impostazioni: la destinazione rimane la cartella radice pubblicata tramite Pages. Non servono `npm install` o chiavi API.
+GitHub può spostare le voci delle impostazioni: la destinazione rimane la cartella radice pubblicata tramite Pages. Per pubblicare e utilizzare la copia inclusa non servono `npm install`, build o chiavi API. Il file `app.bundle.js` è già pronto.
 
 ## Installazione
 
@@ -43,7 +43,7 @@ La data e l’ora sono quelle locali del dispositivo al momento dell’esportazi
 
 ## PDF provvisorio
 
-Formato A4 verticale, bianco e nero. Intestazione e dati di scavo in alto; tabella con sole righe compilate a sinistra; testo multilinea e schizzo a destra. Se necessario il contenuto prosegue su altre pagine senza tagliare righe o testo. I font sono incorporati per mantenere accenti e caratteri internazionali supportati dal font DejaVu; i simboli fuori da questo font, come alcune emoji, non sono garantiti.
+Formato A4 verticale, bianco e nero. Intestazione e dati di scavo in alto; tabella con sole righe compilate a sinistra; testo multilinea e schizzo a destra. Se necessario il contenuto prosegue su altre pagine senza tagliare righe o testo. I font sono incorporati per mantenere accenti e caratteri internazionali supportati dal font Liberation Sans; i simboli fuori da questo font, come alcune emoji, non sono garantiti.
 
 L’impaginazione è **provvisoria**, in attesa del template PDF definitivo. Il renderer è isolato in `js/pdf.js` per poterlo sostituire senza cambiare l’interfaccia o il formato dati.
 
@@ -57,7 +57,11 @@ L’importazione verifica i campi prima di sostituire la scheda: limite 30 MB, 5
 
 - `index.html`: schermate e dialoghi accessibili.
 - `styles.css`: layout responsive e palette.
-- `js/app.js`: flusso dell’app, import/export e installazione.
+- `js/app.js`: flusso dell’app e import/export.
+- `app.bundle.js`: copia pronta per il browser, generata dai moduli sorgenti.
+- `pwa-install.js`: installazione indipendente dall’editor, seguendo la struttura di SMV.
+- `bootstrap.js`: allineamento del sottotitolo e segnalazione degli errori di avvio.
+- `build.mjs`: generazione riproducibile del bundle.
 - `js/data.js`: schema, validazione e nomi file.
 - `js/sketch.js`: editor e rendering dei tratti.
 - `js/pdf.js`: generazione PDF.
@@ -65,18 +69,33 @@ L’importazione verifica i campi prima di sostituire la scheda: limite 30 MB, 5
 - `manifest.webmanifest`: identità e icone PWA.
 - `vendor/`: jsPDF locale e licenze dei componenti.
 
-Per sviluppare in locale con Python 3: `python3 -m http.server 8080`, poi apri `http://localhost:8080`. Non aprire `index.html` direttamente come file: moduli, font e service worker richiedono HTTP/HTTPS.
+Per sviluppare in locale con Python 3: `python3 -m http.server 8080`, poi apri `http://localhost:8080`. Non aprire `index.html` direttamente come file: font e service worker richiedono HTTP/HTTPS.
 
-Test del formato dati con Node.js 20 o successivo: `npm test`. I test non richiedono pacchetti aggiuntivi.
+Per modificare il codice: Node.js 20 o successivo, `npm install`, `npm run build`, quindi `npm test`. Il bundle non va modificato a mano: modificare i file in `js/` e rigenerarlo. Le dipendenze di sviluppo sono esbuild e jsdom; non sono necessarie sul sito pubblicato.
 
 Per rilasciare aggiornamenti, cambia `VERSION` in `sw.js` e carica i file aggiornati. La nuova cache viene attivata dopo la chiusura di tutte le finestre dell’app precedente, evitando di mescolare file di due versioni. La prima sostituzione della vecchia app può richiedere la chiusura e riapertura di tutte le sue finestre, o un aggiornamento della pagina online.
 
 ## Componenti
 
-jsPDF 3.0.3 (MIT) e font DejaVu (licenza in `vendor/`). Immagine di sfondo generata per questo progetto. Icona locale con profilo di recipiente. Nessun servizio di analisi o tracciamento.
+jsPDF 3.0.3 (MIT) e font Liberation Sans (licenza in `vendor/`). Immagine di sfondo generata per questo progetto. Icona locale con profilo di recipiente. Nessun servizio di analisi o tracciamento.
+
+## Aggiornamento dalla v1.0
+
+Sostituisci i file pubblicati e includi anche i nuovi `app.bundle.js`, `pwa-install.js`, `bootstrap.js` e i font Liberation Sans in `assets/`. Il vecchio pulsante `reset` interferiva con il metodo del modulo: è stato rinominato e il reset usa esplicitamente il metodo nativo. L’installazione è ora indipendente da editor e libreria PDF. I pulsanti della home si attivano al completamento dell’avvio; in caso di errore compare un messaggio.
+
+Dopo la pubblicazione apri il sito online, attendi qualche secondo per scaricare l’aggiornamento, poi chiudi **tutte** le schede e finestre dell’app, compresa quella installata, e riaprila. Questo permette alla nuova versione offline di attivarsi. Se compare ancora la grafica precedente, aggiorna la pagina con Ctrl+Shift+R su Windows/Linux o Cmd+Shift+R su Mac e ripeti la chiusura delle finestre. Non cancellare i dati del sito prima di aver esportato eventuali schede utili dalla vecchia versione.
+
+## Novità v1.1
+
+- Corretto l’avvio di Nuova scheda e il reset del modulo.
+- Installazione autonoma con gestione del prompt e istruzioni alternative.
+- Pulsanti con sole etichette di testo.
+- Liberation Sans incluso nell’app e incorporato nei PDF.
+- Summary form allineato alla larghezza di Ceramic anche dopo il caricamento del font e il ridimensionamento.
+- Filigrana dietro ai pulsanti su desktop e mobile; su mobile il paesaggio è ingrandito e ritagliato.
 
 ## Verifiche di questa consegna
 
-Eseguiti i sei test automatici dei dati e il controllo sintattico di tutti i moduli. Verificata la generazione PDF con font incorporati, righe vuote escluse e contenuto lungo su quattro pagine, controllando anche l’ultima riga e l’ultima osservazione e il rendering delle pagine.
+Test automatici del formato dati, flussi dei pulsanti in ambiente DOM simulato, richiesta di installazione simulata, importazione JSON precedente, reset Sì/No, tratti dello schizzo dopo annulla/ripeti ed esportazione JSON. Verificata anche la cache offline: risorse incluse, URL con parametri, navigazione senza rete e isolamento dalle altre app. Il PDF è stato generato e controllato con font Liberation Sans incorporato e contenuto lungo su quattro pagine.
 
-Il collaudo grafico completo nel browser non è stato possibile nell’ambiente di preparazione. Dopo la pubblicazione vanno provati sul dispositivo reale: layout mobile/desktop, tastiera numerica, disegno con lo stilo, annulla/ripeti, rotazione dello schermo, import/export JSON, conferma reset, installazione e riapertura in modalità aereo dopo il primo caricamento online.
+L’ambiente DOM di test non sostituisce il browser reale: restano da controllare sul dispositivo la resa grafica, la richiesta nativa di installazione e il disegno con lo stilo.

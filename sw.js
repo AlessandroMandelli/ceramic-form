@@ -1,5 +1,5 @@
-/* Increase VERSION for each release. Only this app's cache is managed. */
-const VERSION = "ceramic-v1.0.0";
+/* Ogni rilascio ha una cache completa e isolata per questa PWA. */
+const VERSION = "1.1.0";
 const PREFIX = `ceramic-${self.registration.scope}-`;
 const CACHE = PREFIX + VERSION;
 const ASSETS = [
@@ -7,22 +7,35 @@ const ASSETS = [
   "./index.html",
   "./styles.css",
   "./manifest.webmanifest",
-  "./js/app.js",
-  "./js/data.js",
-  "./js/sketch.js",
-  "./js/pdf.js",
+  "./pwa-install.js",
+  "./bootstrap.js",
+  "./app.bundle.js",
   "./vendor/jspdf.umd.min.js",
   "./assets/excavation.webp",
-  "./assets/DejaVuSans.ttf",
-  "./assets/DejaVuSans-Bold.ttf",
+  "./assets/LiberationSans-Regular.ttf",
+  "./assets/LiberationSans-Bold.ttf",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/icon-maskable.png",
 ];
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        cache.addAll(
+          ASSETS.map(
+            (path) =>
+              new Request(new URL(path, self.registration.scope), {
+                cache: "reload",
+              }),
+          ),
+        ),
+      ),
+  );
 });
-// Do not skipWaiting: a new release activates after all old app windows close.
+// L'aggiornamento si attiva alla chiusura di tutte le finestre precedenti:
+// evita di mescolare editor e risorse appartenenti a rilasci diversi.
 self.addEventListener("activate", (event) =>
   event.waitUntil(
     caches
@@ -40,23 +53,25 @@ self.addEventListener("activate", (event) =>
 self.addEventListener("fetch", (event) => {
   if (
     event.request.method !== "GET" ||
-    new URL(event.request.url).origin !== self.location.origin
+    !event.request.url.startsWith(self.registration.scope)
   )
     return;
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const found = await cache.match(event.request, { ignoreSearch: false });
+      // Cerca anche l'URL senza query: HTML e script di questo rilascio
+      // restano coerenti anche se si naviga con parametri o offline.
+      const plain = new URL(event.request.url);
+      plain.search = "";
+      const found =
+        (await cache.match(event.request)) || (await cache.match(plain.href));
       if (found) return found;
       try {
         return await fetch(event.request);
       } catch (error) {
-        if (
-          event.request.mode === "navigate" &&
-          new URL(event.request.url).pathname.startsWith(
-            new URL(self.registration.scope).pathname,
-          )
-        )
-          return cache.match("./index.html");
+        if (event.request.mode === "navigate")
+          return cache.match(
+            new URL("./index.html", self.registration.scope).href,
+          );
         throw error;
       }
     }),

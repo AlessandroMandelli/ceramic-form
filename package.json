@@ -1,10 +1,15 @@
 {
   "name": "ceramic-summary-form",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node build.mjs",
     "test": "node --test tests/*.test.js",
     "serve": "python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.5",
+    "jsdom": "26.1.0"
   }
 }

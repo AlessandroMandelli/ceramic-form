@@ -16,20 +16,26 @@
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Ceramic – Summary form</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <script defer src="./vendor/jspdf.umd.min.js"></script>
-    <script type="module" src="./js/app.js"></script>
+    <link rel="stylesheet" href="./styles.css?v=1.1.0" />
+    <script defer src="./pwa-install.js?v=1.1.0"></script>
+    <script defer src="./bootstrap.js?v=1.1.0"></script>
+    <script defer src="./app.bundle.js?v=1.1.0"></script>
   </head>
   <body>
     <main id="home" class="home">
-      <button id="install" class="install secondary">↓ Installa app</button>
+      <button id="install" class="install secondary">Installa app</button>
       <div class="welcome">
-        <h1>Ceramic</h1>
-        <p>Summary form</p>
-        <div class="home-actions">
-          <button id="new">Nuova scheda</button
-          ><button id="import" class="secondary">Importa JSON</button>
+        <div class="home-branding">
+          <h1><span id="home-title">Ceramic</span></h1>
+          <p><span id="home-subtitle">Summary form</span></p>
         </div>
+        <div class="home-actions">
+          <button id="new" type="button" disabled>Nuova scheda</button
+          ><button id="import" type="button" class="secondary" disabled>
+            Importa JSON
+          </button>
+        </div>
+        <p id="home-status" class="home-status" role="status" hidden></p>
       </div>
     </main>
     <main id="form-view" hidden>
@@ -73,7 +79,7 @@
               <tbody id="rows"></tbody>
             </table>
             <button type="button" id="add-row" class="secondary add-row">
-              + Aggiungi riga
+              Aggiungi riga
             </button>
           </section>
           <div class="right-column">
@@ -91,7 +97,7 @@
               <button type="button" id="open-sketch" class="sketch-box">
                 <img id="sketch-preview" alt="Schizzo salvato" hidden /><span
                   id="sketch-placeholder"
-                  >✎<br />Tocca per disegnare</span
+                  >Tocca per disegnare</span
                 >
               </button>
               <p id="sketch-hint" class="hint" hidden>Tocca per modificare</p>
@@ -99,7 +105,7 @@
           </div>
         </div>
         <footer class="actions">
-          <button type="button" id="reset" class="secondary reset">
+          <button type="button" id="reset-sheet" class="secondary reset">
             Reset scheda
           </button>
           <div>
@@ -136,8 +142,8 @@
         <button id="save-sketch">Salva schizzo</button>
       </header>
       <div class="sketch-tools" role="toolbar" aria-label="Strumenti schizzo">
-        <button id="undo" class="secondary">↶ Annulla tratto</button
-        ><button id="redo" class="secondary">↷ Ripeti tratto</button
+        <button id="undo" class="secondary">Annulla tratto</button
+        ><button id="redo" class="secondary">Ripeti tratto</button
         ><button id="eraser" class="secondary" aria-pressed="false">
           Gomma</button
         ><button id="clear" class="secondary">Pulisci schizzo</button>
@@ -164,6 +170,7 @@
         ><button id="clear-yes">Sì</button>
       </div>
     </dialog>
+    <noscript>Attiva JavaScript nel browser per compilare le schede.</noscript>
     <div
       id="status"
       role="status"
