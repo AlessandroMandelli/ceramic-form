@@ -180,7 +180,7 @@ $("#export-files").onclick = async () => {
     const record = collect();
     const stem = filename(record.header);
     record.sketchPng = await sketchPng(record.sketch);
-    const doc = await createPdf(record, record.sketchPng);
+    const doc = await createPdf(record);
     const files = [
       {
         selector: "#download-pdf",

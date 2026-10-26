@@ -1,4 +1,5 @@
 import { COLUMNS, filledRows } from "./data.js";
+import { drawPdfSketch } from "./pdf-sketch.js";
 let fonts;
 let engine;
 function loadEngine() {
@@ -42,7 +43,7 @@ async function fontData() {
   return fonts;
 }
 /** Replace this renderer when the final PDF template is supplied. All units are mm. */
-export async function createPdf(record, png) {
+export async function createPdf(record, png = record.sketchPng || "") {
   await loadEngine();
   const doc = new window.jspdf.jsPDF({
     unit: "mm",
@@ -136,7 +137,15 @@ export async function createPdf(record, png) {
     let x = left;
     ["Type/Form", "Rims", "Handles", "Feet", "Bodies"].forEach((label, i) => {
       doc.rect(x, top + 7, widths[i], 8);
-      text(label, x + 1.2, top + 12, true, 7.5);
+      if (i === 0) text(label, x + 1.2, top + 12, true, 7.5);
+      else {
+        doc.setFont("Liberation", "bold");
+        doc.setFontSize(7.5);
+        doc.text(label, x + widths[i] / 2, top + 11, {
+          align: "center",
+          baseline: "middle",
+        });
+      }
       x += widths[i];
     });
     text("Fabric and remarks", split + 3, top + 5, true);
@@ -153,9 +162,19 @@ export async function createPdf(record, png) {
     COLUMNS.map((key, i) => wrap(row[key], widths[i] - 3, 8.5)),
   );
   const notes = wrap(record.remarks, right - split - 6, 9);
+  const sketchModel =
+    record.sketch && Array.isArray(record.sketch.strokes)
+      ? record.sketch
+      : null;
+  const hasSketch = sketchModel
+    ? Boolean(
+        sketchModel.base ||
+          sketchModel.strokes.some((stroke) => stroke.points.length),
+      )
+    : Boolean(png);
   let rowIndex = 0,
     noteIndex = 0,
-    sketchPending = Boolean(png),
+    sketchPending = hasSketch,
     page = 1;
   do {
     if (page > 1) {
@@ -200,16 +219,28 @@ export async function createPdf(record, png) {
       const sketchHeight = (right - split - 8) * 0.75;
       if (notesY + sketchHeight + 12 <= bottom) {
         line(split, notesY + 7, right, notesY + 7);
-        doc.addImage(
-          png,
-          "PNG",
-          split + 4,
-          notesY + 11,
-          right - split - 8,
-          sketchHeight,
-          undefined,
-          "FAST",
-        );
+        if (sketchModel) {
+          drawPdfSketch(
+            doc,
+            sketchModel,
+            split + 4,
+            notesY + 11,
+            right - split - 8,
+            sketchHeight,
+          );
+        } else {
+          // Compatibility for callers that only have a flattened legacy image.
+          doc.addImage(
+            png,
+            "PNG",
+            split + 4,
+            notesY + 11,
+            right - split - 8,
+            sketchHeight,
+            undefined,
+            "FAST",
+          );
+        }
         sketchPending = false;
       }
     }
